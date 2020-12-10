@@ -1,0 +1,8 @@
+properties:
+  auth_url: 
+  project_id: 
+  image:
+  flavor: 
+  network: 
+  keypair:
+  security_group:
