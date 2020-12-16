@@ -5,7 +5,7 @@ from datetime import datetime
 
 import ruamel.yaml as yaml
 
-from lib import MicadoClient
+from .lib import MicadoClient
 
 STATUS_INIT = 0
 STATUS_DEPLOYING = 1

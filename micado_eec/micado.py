@@ -1,11 +1,13 @@
 import json
 import uuid
 import tempfile
+from base64 import standard_b64decode
 
+import ruamel.yaml as yaml
 from flask import jsonify, Flask, request
 from werkzeug.exceptions import BadRequest, NotFound
 
-from handle_micado import HandleMicado
+from .handle_micado import HandleMicado
 
 threads = {}
 
@@ -95,7 +97,8 @@ def _get_artefact_ports(artefact_data):
 
     # If there is no `adt` property pre-registered in the artefact
     # let the user know it is required as input
-    if "adt" not in artefact_data:
+    artefact_data = artefact_data.get("artefact_data") or artefact_data
+    if not artefact_data.get("adt"):
         adt_input = {
             "filename": "adt.yaml",
             "id": "4d7",
@@ -104,6 +107,11 @@ def _get_artefact_ports(artefact_data):
 
     return free_inputs, free_outputs, parameters
 
+def _decode_yaml(encoded_yaml):
+    #try:
+    decoded_string = str(standard_b64decode(encoded_yaml, 'utf-8'))
+    #except 
+    yaml.safe_load(decoded_string)
 
 @app.route("/micado_eec/get_eec_properties", methods=["GET"])
 def get_properties():
@@ -138,8 +146,10 @@ def submit_micado():
     files = {x: request.files[x] for x in request.files}
     try:
         artefact_data = json.load(files.pop("artefact_data"))
-        inouts = json.load(files.pop("inouts", {}))
+        inouts = json.loads(files.pop("inouts", ""))
     except KeyError as error:
+        raise BadRequest(f"Missing input: {error}")
+    except TypeError as error:
         raise BadRequest(f"Missing input: {error}")
 
     submission_id = _submit_micado(
@@ -201,6 +211,7 @@ def _write_files(files):
 
     for file_id in files:
         path = tempdir + "/" + file_id
+        print(path)
         with open(path, "wb") as file:
             while True:
                 data = files[file_id].read(65536)
