@@ -6,6 +6,7 @@ from datetime import datetime
 import ruamel.yaml as yaml
 
 from .lib import MicadoClient
+from .utils import base64_to_yaml, load_yaml_file
 
 STATUS_INIT = 0
 STATUS_DEPLOYING = 1
@@ -29,7 +30,8 @@ STATUS_INFRA_REMOVE_ERROR = "failed to remove infrastructure for MiCADO"
 
 MASTER_CLOUD = "openstack"
 DEFAULT_MASTER_YAML = "cloud.yml"
-MASTER_YAML = "master.yaml"
+MASTER_NODE = "micado-master"
+
 
 ARTEFACT_ADT_REF = "deployment_adt"
 INPUT_ADT_REF = "adt.yaml"
@@ -128,15 +130,17 @@ class HandleMicado(threading.Thread):
         """Builds a MiCADO Master and deploys an application"""
         try:
             # Load inputs and parameters
-            files, parameters = self._load_data()
-            master_node_data = self._get_master_node_data(files)
-            app_data = self._get_deployment_data(files, parameters)
+            deployment_adt = base64_to_yaml(
+                self.artefact_data["downloadUrl_content"]
+            )
+            master_node_data = _get_master_spec(deployment_adt)
+            parameters = self._load_params()
 
             # Create MiCADO Master
             self._create_master_node(master_node_data)
 
             # Submit ADT
-            self._submit_app(app_data)
+            self._submit_app(deployment_adt, parameters)
 
             # Wait for abort
             while True:
@@ -154,18 +158,11 @@ class HandleMicado(threading.Thread):
             self.status_details = err.message
             self._delete_app()
 
-    def _load_data(self):
-        """Loads input and parameter data"""
+    def _load_params(self):
+        """Loads parameter data"""
         self.status = STATUS_INIT
         self.status_detail = STATUS_INFRA_INIT
-        # Load files from free inputs
-        files = {}
-        for _input in self.free_inputs:
-            if not self._is_valid_input(_input):
-                raise MicadoBuildException(f"Missing input: {_input}")
-            files[_input["filename"]] = _input
 
-        # Load parameters
         parameters = {
             key: value
             for element in self.inouts.get("parameters", [])
@@ -173,7 +170,17 @@ class HandleMicado(threading.Thread):
             if self._is_valid_param(key)
         }
 
-        return files, parameters
+        return parameters
+
+    def _load_files(self):
+        """Loads files data"""
+        files = {}
+        for _input in self.free_inputs:
+            if not self._is_valid_input(_input):
+                raise MicadoBuildException(f"Missing input: {_input}")
+            files[_input["filename"]] = _input
+
+        return files
 
     def _create_master_node(self, master_node_data):
         """Creates the MiCADO Master node"""
@@ -222,28 +229,6 @@ class HandleMicado(threading.Thread):
         self.status = STATUS_ABORTED
         self.status_detail = STATUS_INFRA_REMOVED
 
-    def _get_deployment_data(self, files, parameters):
-        """Retrieves application deployment data"""
-        app_data = {}
-        if ARTEFACT_ADT_REF in self.artefact_data:
-            app_data["adt"] = self.artefact_data[ARTEFACT_ADT_REF]
-        elif INPUT_ADT_REF in files:
-            file_id = files[INPUT_ADT_REF]["id"]
-            app_data["adt"] = _load_yaml_file(self.file_paths[file_id])
-
-        app_data[APP_ID_PARAM] = parameters.pop(APP_ID_PARAM, self.threadID)
-        if parameters:
-            app_data[APP_PARAMS] = parameters
-
-        return app_data
-
-    def _get_master_node_data(self, files):
-        """Retrieves the Master node configuration"""
-        if MASTER_YAML in files:
-            file_id = files[MASTER_YAML]["id"]
-            return _load_yaml_file(self.file_paths[file_id])["properties"]
-        return _load_yaml_file(DEFAULT_MASTER_YAML)["properties"]
-
     def _is_valid_input(self, input_to_check):
         """Checks if the input is valid"""
         try:
@@ -267,13 +252,17 @@ class HandleMicado(threading.Thread):
         return len(available) == 1
 
 
-def _load_yaml_file(path):
-    """Loads YAML data from file"""
+def _get_master_spec(adt):
+    """Retrieves the Master node configuration"""
     try:
-        with open(path, "r") as file:
-            return yaml.safe_load(file)
+        node = adt["topology_template"]["node_templates"].pop("micado-master")
+        return node["properties"]
+    except KeyError:
+        pass
 
-    except yaml.error.YAMLError:
+    try:
+        return load_yaml_file(DEFAULT_MASTER_YAML)["properties"]
+    except (yaml.YAMLError, KeyError):
         raise MicadoInfraException(
-            f"Could not load YAML at {path} for MiCADO deployment"
+            f"Could not get default Master spec from {DEFAULT_MASTER_YAML}"
         )
