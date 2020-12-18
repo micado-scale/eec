@@ -1,13 +1,13 @@
 import json
 import uuid
 import tempfile
-from base64 import standard_b64decode
 
-import ruamel.yaml as yaml
 from flask import jsonify, Flask, request
 from werkzeug.exceptions import BadRequest, NotFound
 
 from .handle_micado import HandleMicado
+from .utils import base64_to_yaml, is_valid_adt, get_adt_inputs, file_to_json
+
 
 threads = {}
 
@@ -62,9 +62,13 @@ def get_ports():
     Returns:
         Response: JSON object
     """
-    # This GET request expects a body
-    submit_data = request.json
-    free_inputs, free_outputs, parameters = _get_artefact_ports(submit_data)
+    try:
+        artefact_data = _get_artefact_data(request)
+    except KeyError:
+        raise BadRequest("Missing artefact data")
+
+    free_inputs, free_outputs, parameters = _get_artefact_ports(artefact_data)
+
     return jsonify(
         {
             "free_inputs": free_inputs,
@@ -72,6 +76,24 @@ def get_ports():
             "parameters": parameters,
         }
     )
+
+
+def _get_artefact_data(request):
+    """Returns artefact_data, whether multipart/form-data or JSON
+
+    Args:
+        request (flask.Request): Flask's Request object
+
+    Returns:
+        dict: Dictionary representation of artefact_data
+    """
+    headers = request.headers["Content-Type"]
+
+    if "application/json" in headers:
+        return request.json["artefact_data"]
+
+    elif "multipart/form-data" in headers:
+        return file_to_json(request.files["artefact_data"])
 
 
 def _get_artefact_ports(artefact_data):
@@ -95,23 +117,24 @@ def _get_artefact_ports(artefact_data):
     """
     free_inputs, free_outputs, parameters = [], [], []
 
-    # If there is no `adt` property pre-registered in the artefact
-    # let the user know it is required as input
-    artefact_data = artefact_data.get("artefact_data") or artefact_data
-    if not artefact_data.get("adt"):
-        adt_input = {
-            "filename": "adt.yaml",
-            "id": "4d7",
-        }
-        free_inputs.append(adt_input)
+    try:
+        artefact_content = base64_to_yaml(artefact_data["downloadUrl_content"])
+    except KeyError:
+        raise BadRequest("downloadUrl_content: Not found in artefact_data!")
+    except ValueError:
+        raise BadRequest("downloadUrl_content: Must be Base64 encoded YAML!")
+
+    try:
+        is_valid_adt(artefact_content)
+    except KeyError as error:
+        raise BadRequest(f"Not a valid ADT: {error} is undefined!")
+
+    # This would be a good place to determine free inputs/outputs
+
+    parameters = get_adt_inputs(artefact_content)
 
     return free_inputs, free_outputs, parameters
 
-def _decode_yaml(encoded_yaml):
-    #try:
-    decoded_string = str(standard_b64decode(encoded_yaml, 'utf-8'))
-    #except 
-    yaml.safe_load(decoded_string)
 
 @app.route("/micado_eec/get_eec_properties", methods=["GET"])
 def get_properties():
@@ -120,10 +143,12 @@ def get_properties():
     Returns:
         Response: JSON object with key `needs_abort` set True/False
     """
-    # this GET request should include a body
-    submit_data = request.json
 
-    abort = _check_termination(submit_data)
+    # Could use the artefact_data to determine termination requirement:
+    # artefact_data = _get_artefact_data(request)
+    # abort = _check_termination()
+
+    abort = True
     return jsonify({"needs_abort": abort})
 
 
@@ -136,27 +161,24 @@ def _check_termination(artefact):
     Returns:
         bool: if the submission should be manually aborted
     """
-    # do something
-    return True
+    raise NotImplementedError
 
 
 @app.route("/micado_eec/submissions", methods=["POST"])
 def submit_micado():
     """Submits an artefact to the EEC"""
-    files = {x: request.files[x] for x in request.files}
+    files = {file: request.files[file] for file in request.files}
     try:
-        artefact_data = json.load(files.pop("artefact_data"))
-        inouts = json.loads(files.pop("inouts", ""))
+        artefact_data = file_to_json(files.pop("artefact_data"))
+        inouts = file_to_json(files.pop("inouts"))
     except KeyError as error:
-        raise BadRequest(f"Missing input: {error}")
-    except TypeError as error:
         raise BadRequest(f"Missing input: {error}")
 
     submission_id = _submit_micado(
         artefact_data,
         inouts,
         files,
-        *_get_artefact_ports(),
+        *_get_artefact_ports(artefact_data),
     )
     return jsonify({"submission_id": submission_id})
 
@@ -209,18 +231,12 @@ def _write_files(files):
     tempdir = tempfile.mkdtemp()
     file_paths = {}
 
-    for file_id in files:
-        path = tempdir + "/" + file_id
-        print(path)
-        with open(path, "wb") as file:
-            while True:
-                data = files[file_id].read(65536)
-                if not data:
-                    break
-                file.write(data)
+    for filename, file in files.items():
+        path = tempdir + "/" + filename
+        file.save(path)
 
-        print(f"Wrote content of file {file_id} to {path}")
-        file_paths[file_id] = path
+        print(f"Wrote content of file {filename} to {path}")
+        file_paths[filename] = path
 
     return file_paths
 
@@ -261,7 +277,7 @@ def get_micado_resource_usage(submission_id):
     """
     thread = threads.get(submission_id)
     if not thread:
-        raise NotFound("Cannot find submission {submission_id}")
+        raise NotFound(f"Cannot find submission {submission_id}")
     runtime_seconds = thread.runtime_seconds()
     return jsonify({"runtime_seconds": runtime_seconds})
 
