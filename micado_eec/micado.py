@@ -254,13 +254,10 @@ def get_submission(submission_id):
     thread = threads.get(submission_id)
     if not thread:
         raise NotFound("Cannot find submission {submission_id}")
-    if thread.is_alive():
-        return jsonify(thread.get_status())
-    else:
+    elif not thread.is_alive():
         threads.pop(submission_id, None)
-        return jsonify(
-            {"status": 4, "details": "the requested submission was terminated"}
-        )
+
+    return jsonify(thread.get_status())
 
 
 @app.route(
