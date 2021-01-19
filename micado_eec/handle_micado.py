@@ -4,8 +4,8 @@ import time
 from datetime import datetime
 
 import ruamel.yaml as yaml
+from micado import MicadoClient
 
-from .lib import MicadoClient
 from .utils import base64_to_yaml, load_yaml_file
 
 STATUS_INIT = 0
