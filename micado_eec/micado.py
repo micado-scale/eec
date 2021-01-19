@@ -289,8 +289,7 @@ def remove_micado(submission_id):
     Returns:
         Response: JSON Object
     """
-    if not _remove_micado(submission_id):
-        return jsonify({"error": "500 Internal Server Error"}), 500
+    _remove_micado(submission_id)
     return jsonify({"status": "submission removal successfully initiated"})
 
 
@@ -304,7 +303,6 @@ def _remove_micado(submission_id):
     if not thread:
         raise NotFound("Cannot find submission {submission_id}")
     thread.abort()
-    return threads.pop(submission_id, None)
 
 
 @app.route(

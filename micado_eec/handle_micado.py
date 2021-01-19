@@ -120,11 +120,11 @@ class HandleMicado(threading.Thread):
     def runtime_seconds(self):
         return int(datetime.now().timestamp() - self.submit_time)
 
-    def _check_abort(self):
+    def _is_aborted(self):
         if not self._abort:
-            return
-        self.status = STATUS_ABORTED
+            return False
         self._kill_micado()
+        return True
 
     def run(self):
         """Builds a MiCADO Master and deploys an application"""
@@ -144,7 +144,8 @@ class HandleMicado(threading.Thread):
 
             # Wait for abort
             while True:
-                self._check_abort()
+                if self._is_aborted():
+                    break
                 time.sleep(30)
         except MicadoBuildException as err:
             self.status = STATUS_ERROR
