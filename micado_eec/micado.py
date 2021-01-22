@@ -254,13 +254,10 @@ def get_submission(submission_id):
     thread = threads.get(submission_id)
     if not thread:
         raise NotFound("Cannot find submission {submission_id}")
-    if thread.is_alive():
-        return jsonify(thread.get_status())
-    else:
+    elif not thread.is_alive():
         threads.pop(submission_id, None)
-        return jsonify(
-            {"status": 4, "details": "the requested submission was terminated"}
-        )
+
+    return jsonify(thread.get_status())
 
 
 @app.route(
@@ -292,8 +289,7 @@ def remove_micado(submission_id):
     Returns:
         Response: JSON Object
     """
-    if not _remove_micado(submission_id):
-        return jsonify({"error": "500 Internal Server Error"}), 500
+    _remove_micado(submission_id)
     return jsonify({"status": "submission removal successfully initiated"})
 
 
@@ -307,7 +303,6 @@ def _remove_micado(submission_id):
     if not thread:
         raise NotFound("Cannot find submission {submission_id}")
     thread.abort()
-    return threads.pop(submission_id, None)
 
 
 @app.route(

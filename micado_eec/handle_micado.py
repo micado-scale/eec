@@ -4,8 +4,8 @@ import time
 from datetime import datetime
 
 import ruamel.yaml as yaml
+from micado import MicadoClient
 
-from .lib import MicadoClient
 from .utils import base64_to_yaml, load_yaml_file
 
 STATUS_INIT = 0
@@ -120,11 +120,11 @@ class HandleMicado(threading.Thread):
     def runtime_seconds(self):
         return int(datetime.now().timestamp() - self.submit_time)
 
-    def _check_abort(self):
+    def _is_aborted(self):
         if not self._abort:
-            return
-        self.status = STATUS_ABORTED
+            return False
         self._kill_micado()
+        return True
 
     def run(self):
         """Builds a MiCADO Master and deploys an application"""
@@ -144,7 +144,8 @@ class HandleMicado(threading.Thread):
 
             # Wait for abort
             while True:
-                self._check_abort()
+                if self._is_aborted():
+                    break
                 time.sleep(30)
         except MicadoBuildException as err:
             self.status = STATUS_ERROR
@@ -193,12 +194,12 @@ class HandleMicado(threading.Thread):
 
         self.status_detail = STATUS_INFRA_READY
 
-    def _submit_app(self, app_data):
+    def _submit_app(self, app_data, params):
         """Submits an application to MiCADO"""
         self.status = STATUS_DEPLOYING
         self.status_detail = STATUS_APP_BUILD
 
-        self.micado.applications.create(**app_data)
+        self.micado.applications.create(adt=app_data, params=params)
 
         # TODO: Check app is running
 
