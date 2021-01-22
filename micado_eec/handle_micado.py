@@ -194,12 +194,12 @@ class HandleMicado(threading.Thread):
 
         self.status_detail = STATUS_INFRA_READY
 
-    def _submit_app(self, app_data):
+    def _submit_app(self, app_data, params):
         """Submits an application to MiCADO"""
         self.status = STATUS_DEPLOYING
         self.status_detail = STATUS_APP_BUILD
 
-        self.micado.applications.create(**app_data)
+        self.micado.applications.create(adt=app_data, params=params)
 
         # TODO: Check app is running
 
