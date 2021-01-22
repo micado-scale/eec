@@ -1,0 +1,1 @@
+curl -F artefact_data=@artefact_data -F inouts=@inouts.json localhost:5000/micado_eec/submissions
