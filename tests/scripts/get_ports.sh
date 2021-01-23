@@ -1,0 +1,1 @@
+curl -X GET -F artefact_data=@artefact_data localhost:5000/micado_eec/get_ports

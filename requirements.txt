@@ -1,8 +1,9 @@
+wheel
 requests==2.24.0
 ruamel.yaml==0.16.10
 pycryptodome==3.9.8
 python-novaclient==17.2.0
 openstacksdk==0.48.0
 ansible==2.10.0
-Flask
-wheel
+Flask==1.1.2
+git+git://github.com/micado-scale/micado-client@develop#egg=micado-client

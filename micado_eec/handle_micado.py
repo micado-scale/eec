@@ -1,11 +1,12 @@
+import os
 import base64
 import threading
 import time
 from datetime import datetime
 
 import ruamel.yaml as yaml
+from micado import MicadoClient
 
-from .lib import MicadoClient
 from .utils import base64_to_yaml, load_yaml_file
 
 STATUS_INIT = 0
@@ -29,9 +30,11 @@ STATUS_INFRA_REMOVED = "infrastructure for MiCADO removed"
 STATUS_INFRA_REMOVE_ERROR = "failed to remove infrastructure for MiCADO"
 
 MASTER_CLOUD = "openstack"
-DEFAULT_MASTER_YAML = "cloud.yml"
 MASTER_NODE = "micado-master"
 
+DEFAULT_MASTER_YAML = os.environ.get(
+    "MASTER_SPEC", "/etc/eec/master_spec.yaml"
+)
 
 ARTEFACT_ADT_REF = "deployment_adt"
 INPUT_ADT_REF = "adt.yaml"
@@ -120,11 +123,11 @@ class HandleMicado(threading.Thread):
     def runtime_seconds(self):
         return int(datetime.now().timestamp() - self.submit_time)
 
-    def _check_abort(self):
+    def _is_aborted(self):
         if not self._abort:
-            return
-        self.status = STATUS_ABORTED
+            return False
         self._kill_micado()
+        return True
 
     def run(self):
         """Builds a MiCADO Master and deploys an application"""
@@ -144,7 +147,8 @@ class HandleMicado(threading.Thread):
 
             # Wait for abort
             while True:
-                self._check_abort()
+                if self._is_aborted():
+                    break
                 time.sleep(30)
         except MicadoBuildException as err:
             self.status = STATUS_ERROR
@@ -193,12 +197,12 @@ class HandleMicado(threading.Thread):
 
         self.status_detail = STATUS_INFRA_READY
 
-    def _submit_app(self, app_data):
+    def _submit_app(self, app_data, params):
         """Submits an application to MiCADO"""
         self.status = STATUS_DEPLOYING
         self.status_detail = STATUS_APP_BUILD
 
-        self.micado.applications.create(**app_data)
+        self.micado.applications.create(adt=app_data, params=params)
 
         # TODO: Check app is running
 
@@ -255,14 +259,18 @@ class HandleMicado(threading.Thread):
 def _get_master_spec(adt):
     """Retrieves the Master node configuration"""
     try:
-        node = adt["topology_template"]["node_templates"].pop("micado-master")
+        node = adt["topology_template"]["node_templates"].pop(
+            "micado-master", {}
+        )
         return node["properties"]
     except KeyError:
         pass
 
     try:
-        return load_yaml_file(DEFAULT_MASTER_YAML)["properties"]
+        properties = load_yaml_file(DEFAULT_MASTER_YAML)["properties"]
     except (yaml.YAMLError, KeyError):
         raise MicadoInfraException(
             f"Could not get default Master spec from {DEFAULT_MASTER_YAML}"
         )
+
+    return {key: val for key, val in properties.items() if val}

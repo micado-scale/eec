@@ -1,0 +1,39 @@
+tosca_definitions_version: tosca_simple_yaml_1_2
+
+imports:
+  - https://raw.githubusercontent.com/micado-scale/tosca/develop/micado_types.yaml
+
+repositories:
+  docker_hub: https://hub.docker.com/
+
+description: Deploys busybox to the MiCADO Master
+
+topology_template:
+  node_templates:
+    busybox:
+      type: tosca.nodes.MiCADO.Kubernetes
+      interfaces:
+        Kubernetes:
+          create:
+            inputs:
+              apiVersion: v1
+              kind: Pod
+              metadata:
+                name: busybox-sleep-less
+              spec:
+                tolerations:
+                - key: node-role.kubernetes.io/master
+                  effect: NoSchedule
+                containers:
+                - name: busybox
+                  image: busybox
+                  args:
+                  - sleep
+                  - '1000'
+      
+  policies:
+    - monitoring:
+        type: tosca.policies.Monitoring.MiCADO
+        properties:
+          enable_container_metrics: true
+          enable_node_metrics: true
