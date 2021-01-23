@@ -1,0 +1,13 @@
+version: "3.2"
+services:
+  api:
+    image: micado/eec:v0.1.0
+    ports:
+    - "5000:5000"
+    volumes:
+    - type: bind
+      source: /etc/micado 
+      target: /etc/micado
+    - type: bind
+      source: /etc/eec
+      target: /etc/eec
