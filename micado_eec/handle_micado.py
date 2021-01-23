@@ -1,3 +1,4 @@
+import os
 import base64
 import threading
 import time
@@ -29,9 +30,11 @@ STATUS_INFRA_REMOVED = "infrastructure for MiCADO removed"
 STATUS_INFRA_REMOVE_ERROR = "failed to remove infrastructure for MiCADO"
 
 MASTER_CLOUD = "openstack"
-DEFAULT_MASTER_YAML = "cloud.yml"
 MASTER_NODE = "micado-master"
 
+DEFAULT_MASTER_YAML = os.environ.get(
+    "MASTER_SPEC", "/etc/eec/master_spec.yaml"
+)
 
 ARTEFACT_ADT_REF = "deployment_adt"
 INPUT_ADT_REF = "adt.yaml"
@@ -256,14 +259,18 @@ class HandleMicado(threading.Thread):
 def _get_master_spec(adt):
     """Retrieves the Master node configuration"""
     try:
-        node = adt["topology_template"]["node_templates"].pop("micado-master")
+        node = adt["topology_template"]["node_templates"].pop(
+            "micado-master", {}
+        )
         return node["properties"]
     except KeyError:
         pass
 
     try:
-        return load_yaml_file(DEFAULT_MASTER_YAML)["properties"]
+        properties = load_yaml_file(DEFAULT_MASTER_YAML)["properties"]
     except (yaml.YAMLError, KeyError):
         raise MicadoInfraException(
             f"Could not get default Master spec from {DEFAULT_MASTER_YAML}"
         )
+
+    return {key: val for key, val in properties.items() if val}
