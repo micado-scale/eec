@@ -1,3 +1,4 @@
+import os
 import base64
 import threading
 import time
@@ -29,9 +30,11 @@ STATUS_INFRA_REMOVED = "infrastructure for MiCADO removed"
 STATUS_INFRA_REMOVE_ERROR = "failed to remove infrastructure for MiCADO"
 
 MASTER_CLOUD = "openstack"
-DEFAULT_MASTER_YAML = "cloud.yml"
 MASTER_NODE = "micado-master"
 
+DEFAULT_MASTER_YAML = os.environ.get(
+    "MASTER_SPEC", "/etc/eec/master_spec.yaml"
+)
 
 ARTEFACT_ADT_REF = "deployment_adt"
 INPUT_ADT_REF = "adt.yaml"
