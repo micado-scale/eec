@@ -1,13 +1,28 @@
 version: "3.2"
 services:
   api:
-    image: micado/eec:v0.1.0
+    image: micado/eec:dev
+    hostname: eec
     ports:
-    - "5000:5000"
+    - 5000:5000
     volumes:
-    - type: bind
-      source: /etc/micado 
-      target: /etc/micado
-    - type: bind
-      source: /etc/eec
-      target: /etc/eec
+    - /etc/micado:/etc/micado
+    - /etc/eec:/etc/eec
+
+  nginx:
+    image: nginx
+    #command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - /etc/nginx:/etc/nginx
+      - /etc/certbot/conf:/etc/letsencrypt
+      - /etc/certbot/www:/var/www/certbot
+
+  certbot:
+    image: certbot/certbot
+    #entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    volumes:
+      - /etc/certbot/conf:/etc/letsencrypt
+      - /etc/certbot/www:/var/www/certbot
