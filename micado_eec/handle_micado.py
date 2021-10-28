@@ -30,6 +30,7 @@ STATUS_INFRA_REMOVED = "infrastructure for MiCADO removed"
 STATUS_INFRA_REMOVE_ERROR = "failed to remove infrastructure for MiCADO"
 
 MASTER_CLOUD = "openstack"
+MICADO_INSTALLER = "ansible"
 MASTER_NODE = "micado-master"
 
 DEFAULT_MASTER_YAML = os.environ.get(
@@ -86,7 +87,9 @@ class HandleMicado(threading.Thread):
         self.final_outputs = free_outputs
         self.parameters = parameters
         self.submit_time = datetime.now().timestamp()
-        self.micado = MicadoClient(launcher=MASTER_CLOUD)
+        self.micado = MicadoClient(
+            launcher=MASTER_CLOUD, installer=MICADO_INSTALLER
+        )
 
     def get_status(self):
         node_data = ""
