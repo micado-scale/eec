@@ -36,6 +36,7 @@ MASTER_NODE = "micado-master"
 DEFAULT_MASTER_YAML = os.environ.get(
     "MASTER_SPEC", "/etc/eec/master_spec.yaml"
 )
+MASTERS_FILE_YAML = "/etc/micado/data.yml"
 
 ARTEFACT_ADT_REF = "deployment_adt"
 INPUT_ADT_REF = "adt.yaml"
@@ -65,6 +66,7 @@ class HandleMicado(threading.Thread):
 
     status = STATUS_INIT
     status_detail = STATUS_INFRA_INIT
+    node_data = {}
 
     def __init__(
         self,
@@ -92,7 +94,6 @@ class HandleMicado(threading.Thread):
         )
 
     def get_status(self):
-        node_data = ""
 
         # Can get node data here, if relevant
 
@@ -107,7 +108,7 @@ class HandleMicado(threading.Thread):
                 <p>Status of the deployment: <b>{self.status_detail}</b></p>
                 <h1>Node IP address information</h1>
                 <p>Here you can find the IP address(es) allocated for the nodes
-                {node_data}
+                {self.node_data}
             </body>
         </html>
         """
@@ -144,6 +145,12 @@ class HandleMicado(threading.Thread):
 
             # Create MiCADO Master
             self._create_master_node(master_node_data)
+
+            data = load_yaml_file(MASTERS_FILE_YAML)
+            masters = data['masters']
+            last_master = list((masters[-1]).values())
+            master_ip = last_master[0].get('ip')
+            self.node_data['MiCADO_Master_IP'] = master_ip
 
             # Submit ADT
             self._submit_app(deployment_adt, parameters)
