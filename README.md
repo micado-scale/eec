@@ -48,8 +48,11 @@ docker stop nginx
 
 *If you changed the host configuration directories, make sure to point to them in the steps below*
 
-**Create** a [credentials file](https://micado-scale.readthedocs.io/en/latest/micado.html#specify-cloud-credentials)
+**Create** a [credentials file](https://micado-scale.readthedocs.io/en/develop/deployment.html#step-2-specify-cloud-credential-for-instantiating-micado-workers)
 at `/etc/micado/credentials-cloud-api.yml` and fill in your OpenStack credentials.
+
+* **Optional** *Create* a [private Docker regsitry credential file](https://micado-scale.readthedocs.io/en/develop/deployment.html#step-3b-optional-specify-credentials-to-use-private-docker-registries)
+at `/etc/micado/credentials-docker-registry.yml` and fill in your private registry URL and credentials.
 
 **Copy** `sample_master_spec.yml` to `/etc/eec/master_spec.yml` and populate it with the OpenStack IDs
 and names that describe your desired MiCADO Master node. This should be an instance meeting the
