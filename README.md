@@ -54,8 +54,8 @@ at `/etc/micado/credentials-cloud-api.yml` and fill in your OpenStack credential
 * **Optional** *Create* a [private Docker regsitry credential file](https://micado-scale.readthedocs.io/en/develop/deployment.html#step-3b-optional-specify-credentials-to-use-private-docker-registries)
 at `/etc/micado/credentials-docker-registry.yml` and fill in your private registry URL and credentials.
 
-**Copy** `sample_master_spec.yml` to `/etc/eec/master_spec.yml` and populate it with the OpenStack IDs
-and names that describe your desired MiCADO Master node. This should be an instance meeting the
+**Copy** `openstack_micado_spec.yml` or `cloudbroker_micado_spec.yml` to `/etc/eec/micado_spec.yml` and populate it with the relevant cloud IDs
+and names that describe your desired MiCADO node on your desired cloud. This should be an instance meeting the
 [recommended requirements](https://micado-scale.readthedocs.io/en/latest/deployment.html#prerequisites)
 with an appropriate
 [firewall configuration](https://micado-scale.readthedocs.io/en/latest/deployment.html#step-4-launch-an-empty-cloud-vm-instance-for-micado-master).
