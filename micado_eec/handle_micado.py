@@ -92,7 +92,7 @@ class HandleMicado(threading.Thread):
         )
 
     def get_status(self):
-        node_data = ""
+        node_data = f"MiCADO node: {self.micado.micado_ip}"
 
         # Can get node data here, if relevant
 
