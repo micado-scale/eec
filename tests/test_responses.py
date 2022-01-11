@@ -20,10 +20,10 @@ def b64_yaml():
     tosca_definitions_version: tosca_simple_yaml_1_2
     imports:
     - micado_types.yaml
-    inputs:
-      test:
-        description: test adt input
     topology_template:
+      inputs:
+        test:
+          description: test adt input
       node_templates:
         stressng:
           type: tosca.nodes.MiCADO.Container.Application.Docker.Deployment
