@@ -171,10 +171,9 @@ class HandleMicado(threading.Thread):
         self.status_detail = STATUS_INFRA_INIT
 
         parameters = {
-            key: value
+            element["key"]: element["value"]
             for element in self.inouts.get("parameters", [])
-            for key, value in element.items()
-            if self._is_valid_param(key)
+            if self._is_valid_param(element["key"])
         }
 
         return parameters
@@ -251,20 +250,18 @@ class HandleMicado(threading.Thread):
     def _is_valid_param(self, key_to_check):
         """Checks if the parameter is valid"""
         available = {
-            key: value
+            value
             for element in self.parameters
-            for key, value in element.items()
-            if key == key_to_check
+            for value in element.values()
+            if value == key_to_check
         }
-        return len(available) == 1
+        return len(available) > 0
 
 
 def _get_micado_spec(adt):
     """Retrieves the MiCADO node configuration"""
     try:
-        node = adt["topology_template"]["node_templates"].pop(
-            "micado", {}
-        )
+        node = adt["topology_template"]["node_templates"].pop("micado", {})
         return node["properties"]
     except KeyError:
         pass
