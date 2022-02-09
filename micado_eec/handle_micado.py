@@ -9,11 +9,12 @@ from micado import MicadoClient
 
 from .utils import base64_to_yaml, load_yaml_file
 
-STATUS_INIT = 0
-STATUS_DEPLOYING = 1
-STATUS_READY = 2
-STATUS_ERROR = 3
-STATUS_ABORTED = 4
+STATUS_INIT = 0 # initializing
+STATUS_RUNNING = 1 # running
+STATUS_RESULTS = 2 # results available
+STATUS_ERROR = 3 # error
+STATUS_ABORTED = 4 # stopping
+STATUS_STOPPED = 5 # stopped
 
 STATUS_INFRA_INIT = "infrastructure initializing"
 STATUS_INFRA_INIT_ERROR = (
@@ -202,14 +203,14 @@ class HandleMicado(threading.Thread):
 
     def _submit_app(self, app_data, params):
         """Submits an application to MiCADO"""
-        self.status = STATUS_DEPLOYING
+        self.status = STATUS_INIT
         self.status_detail = STATUS_APP_BUILD
 
         self.micado.applications.create(adt=app_data, params=params)
 
         # TODO: Check app is running
 
-        self.status = STATUS_READY
+        self.status = STATUS_RUNNING
         self.status_detail = STATUS_APP_READY
 
     def _delete_app(self):
