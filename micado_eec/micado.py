@@ -136,12 +136,12 @@ def _get_artefact_ports(artefact_data):
     return free_inputs, free_outputs, parameters
 
 
-@app.route("/micado_eec/get_eec_properties", methods=["GET"])
-def get_properties():
-    """Retrieves EEC and artefact specific details, given artefact data
+@app.route("/micado_eec/artefact_behavior", methods=["GET"])
+def get_properties(request):
+    """Retrieves artefact termination behaviour, given artefact data
 
     Returns:
-        Response: JSON object with key `needs_abort` set True/False
+        Response: JSON object with key `manual_termination` set True/False
     """
 
     # Could use the artefact_data to determine termination requirement:
@@ -149,7 +149,7 @@ def get_properties():
     # abort = _check_termination()
 
     abort = True
-    return jsonify({"needs_abort": abort})
+    return jsonify({"manual_termination": abort})
 
 
 def _check_termination(artefact):
