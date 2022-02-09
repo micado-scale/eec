@@ -137,7 +137,7 @@ def _get_artefact_ports(artefact_data):
 
 
 @app.route("/micado_eec/artefact_behavior", methods=["GET"])
-def get_properties(request):
+def get_properties():
     """Retrieves artefact termination behaviour, given artefact data
 
     Returns:
