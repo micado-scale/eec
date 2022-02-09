@@ -116,6 +116,7 @@ class HandleMicado(threading.Thread):
             "details": str(
                 base64.standard_b64encode(details.encode()), "utf-8"
             ),
+            "onlyStatus": True,
         }
 
     def abort(self):
