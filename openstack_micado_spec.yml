@@ -1,8 +1,10 @@
 properties:
-  auth_url: 
-  project_id: 
+  auth_url:
+  project_id:
   image:
-  flavor: 
-  network: 
+  flavor:
+  network:
   keypair:
   security_group:
+  terraform: False
+  occopus: True

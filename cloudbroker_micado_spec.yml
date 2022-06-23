@@ -4,3 +4,5 @@ properties:
   instance_type_id:
   key_pair_id:
   firewall_rule_set_id:
+  terraform: False
+  occopus: True
