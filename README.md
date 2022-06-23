@@ -18,15 +18,27 @@ for more detail.
 The MiCADO EEC is shipped as a Docker container and makes heavy use of
 the [MiCADO Client Library](https://github.com/micado-scale/micado-client).
 It is deployed behind an NGINX reverse proxy and secured with SSL. Client
-certificate verification is also enabled.
+certificate verification can be optionally enabled.
 
-Docker-Compose is the recommeded deployment method:
+### Host Specification & Requirements
+
+**Minimum specs.**
+  - 2 vCPUs | 4GB RAM | 20GB Disk | Ubuntu 20.04
+  - FQDN that resolves to the instance public IP 
+
+**Install Docker and Docker-Compose.**
   - [Get Docker](https://docs.docker.com/get-docker/)
   - [Get Docker-Compose](https://docs.docker.com/compose/install/)
 
-### Preparing the host
+**Clone this repository into a directory of your choice**
+```bash
+git clone https://github.com/micado-scale/eec project_name_eec
+cd project_name_eec
+```
 
-**Run** `docker-compose up -d` for the first time and it will attempt to create the
+### Initial preparation of the host (only do this once)
+
+**Run** `docker-compose up -d` and it will attempt to create the
 following directories on the host. You can change these by modifying the
 `volumes` sections in `docker-compose.yml`.
   - `/etc/micado` (Configuration dir for the MiCADO Client Library)
@@ -46,20 +58,25 @@ docker stop nginx
 
 ### Preparing the configuration
 
-*If you changed the host configuration directories, make sure to point to them in the steps below*
+*If you did not use the default directories above, make sure to use the new names in the steps below*
 
-**Create** a [credentials file](https://micado-scale.readthedocs.io/en/latest/micado.html#specify-cloud-credentials)
-at `/etc/micado/credentials-cloud-api.yml` and fill in your OpenStack credentials.
+**Create** a [credentials file](https://micado-scale.readthedocs.io/en/develop/deployment.html#step-2-specify-cloud-credential-for-instantiating-micado-workers)
+at `/etc/micado/credentials-cloud-api.yml` and fill in your OpenStack or CloudBroker credentials.
 
-**Copy** `sample_master_spec.yml` to `/etc/eec/master_spec.yml` and populate it with the OpenStack IDs
-and names that describe your desired MiCADO Master node. This should be an instance meeting the
+* **Optional** *Create* a [private Docker regsitry credential file](https://micado-scale.readthedocs.io/en/develop/deployment.html#step-3b-optional-specify-credentials-to-use-private-docker-registries)
+at `/etc/micado/credentials-docker-registry.yml` and fill in your private registry URL and credentials.
+
+**Copy** `openstack_micado_spec.yml` or `cloudbroker_micado_spec.yml` to `/etc/eec/micado_spec.yml` and populate it with the relevant cloud IDs
+and names that describe your desired MiCADO node on your desired cloud. This should be an instance meeting the
 [recommended requirements](https://micado-scale.readthedocs.io/en/latest/deployment.html#prerequisites)
 with an appropriate
 [firewall configuration](https://micado-scale.readthedocs.io/en/latest/deployment.html#step-4-launch-an-empty-cloud-vm-instance-for-micado-master).
 
-**Copy** `sample_nginx.conf` to `/etc/nginx/conf.d/eec.conf` and change all occurrences of
-`example.com` within to your own domain name. Place the .PEM file for client certificate
-verification at `/etc/nginx/cfg.pem`
+**Copy** `nginx.conf` to `/etc/nginx/conf.d/eec.conf` and change all occurrences of
+`example.com` within to your own domain name.
+
+* **Optional to enforce client verification** *Instead* copy `nginx-verify-client.conf`
+to `/etc/nginx/conf.d/eec.conf` Place the .PEM file for client certificate verification at `/etc/nginx/server.pem`
 
 ### Generating SSL certificates
 
@@ -76,3 +93,7 @@ complete and the certificate is issued, run `docker-compose down`
 `nginx` and `certbot` services. This will enable automatic certificate renewal.
 
 **Run** `docker-compose up -d` one last time and the deployment is complete.
+
+### Integration
+
+Provide an EMGWAM administrator with your domain name and details.

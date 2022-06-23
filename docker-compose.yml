@@ -4,10 +4,14 @@ services:
     image: micado/eec:dev
     hostname: eec
     ports:
-    - 5000:5000
+      - 5000:5000
+    environment:
+      MICADO_CLI_DIR: /etc/micado
+      MICADO_VERS: v0.10.0
+      MASTER_SPEC: /etc/eec/micado_spec.yaml
     volumes:
-    - /etc/micado:/etc/micado
-    - /etc/eec:/etc/eec
+      - /etc/micado:/etc/micado
+      - /etc/eec:/etc/eec
 
   nginx:
     image: nginx

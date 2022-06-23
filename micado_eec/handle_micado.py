@@ -9,11 +9,12 @@ from micado import MicadoClient
 
 from .utils import base64_to_yaml, load_yaml_file
 
-STATUS_INIT = 0
-STATUS_DEPLOYING = 1
-STATUS_READY = 2
-STATUS_ERROR = 3
-STATUS_ABORTED = 4
+STATUS_INIT = 0 # initializing
+STATUS_RUNNING = 1 # running
+STATUS_RESULTS = 2 # results available
+STATUS_ERROR = 3 # error
+STATUS_ABORTED = 4 # stopping
+STATUS_STOPPED = 5 # stopped
 
 STATUS_INFRA_INIT = "infrastructure initializing"
 STATUS_INFRA_INIT_ERROR = (
@@ -29,11 +30,12 @@ STATUS_INFRA_REMOVING = "infrastructure for MiCADO is being removed"
 STATUS_INFRA_REMOVED = "infrastructure for MiCADO removed"
 STATUS_INFRA_REMOVE_ERROR = "failed to remove infrastructure for MiCADO"
 
-MASTER_CLOUD = "openstack"
-MASTER_NODE = "micado-master"
+MICADO_CLOUD = "openstack"
+MICADO_INSTALLER = "ansible"
+MICADO_NODE = "micado"
 
-DEFAULT_MASTER_YAML = os.environ.get(
-    "MASTER_SPEC", "/etc/eec/master_spec.yaml"
+DEFAULT_MICADO_YAML = os.environ.get(
+    "MICADO_SPEC", "/etc/eec/micado_spec.yaml"
 )
 
 ARTEFACT_ADT_REF = "deployment_adt"
@@ -86,10 +88,12 @@ class HandleMicado(threading.Thread):
         self.final_outputs = free_outputs
         self.parameters = parameters
         self.submit_time = datetime.now().timestamp()
-        self.micado = MicadoClient(launcher=MASTER_CLOUD)
+        self.micado = MicadoClient(
+            launcher=MICADO_CLOUD, installer=MICADO_INSTALLER
+        )
 
     def get_status(self):
-        node_data = ""
+        node_data = f"MiCADO node: {self.micado.micado_ip}"
 
         # Can get node data here, if relevant
 
@@ -113,6 +117,7 @@ class HandleMicado(threading.Thread):
             "details": str(
                 base64.standard_b64encode(details.encode()), "utf-8"
             ),
+            "onlyStatus": True,
         }
 
     def abort(self):
@@ -130,17 +135,17 @@ class HandleMicado(threading.Thread):
         return True
 
     def run(self):
-        """Builds a MiCADO Master and deploys an application"""
+        """Builds a MiCADO node and deploys an application"""
         try:
             # Load inputs and parameters
             deployment_adt = base64_to_yaml(
                 self.artefact_data["downloadUrl_content"]
             )
-            master_node_data = _get_master_spec(deployment_adt)
+            micado_node_data = _get_micado_spec(deployment_adt)
             parameters = self._load_params()
 
-            # Create MiCADO Master
-            self._create_master_node(master_node_data)
+            # Create MiCADO
+            self._create_micado_node(micado_node_data)
 
             # Submit ADT
             self._submit_app(deployment_adt, parameters)
@@ -168,10 +173,9 @@ class HandleMicado(threading.Thread):
         self.status_detail = STATUS_INFRA_INIT
 
         parameters = {
-            key: value
+            element["key"]: element["value"]
             for element in self.inouts.get("parameters", [])
-            for key, value in element.items()
-            if self._is_valid_param(key)
+            if self._is_valid_param(element["key"])
         }
 
         return parameters
@@ -186,27 +190,27 @@ class HandleMicado(threading.Thread):
 
         return files
 
-    def _create_master_node(self, master_node_data):
-        """Creates the MiCADO Master node"""
+    def _create_micado_node(self, micado_node_data):
+        """Creates the MiCADO node"""
         self.status = STATUS_INIT
         self.status_detail = STATUS_INFRA_BUILD
 
-        self.micado.master.create(**master_node_data)
+        self.micado.micado.create(**micado_node_data)
 
-        # TODO: Check master is running
+        # TODO: Check micado is running
 
         self.status_detail = STATUS_INFRA_READY
 
     def _submit_app(self, app_data, params):
         """Submits an application to MiCADO"""
-        self.status = STATUS_DEPLOYING
+        self.status = STATUS_INIT
         self.status_detail = STATUS_APP_BUILD
 
         self.micado.applications.create(adt=app_data, params=params)
 
         # TODO: Check app is running
 
-        self.status = STATUS_READY
+        self.status = STATUS_RUNNING
         self.status_detail = STATUS_APP_READY
 
     def _delete_app(self):
@@ -225,7 +229,7 @@ class HandleMicado(threading.Thread):
         self.status = STATUS_ABORTED
         self.status_detail = STATUS_INFRA_REMOVING
         try:
-            self.micado.master.destroy()
+            self.micado.micado.destroy()
         except Exception:
             self.status = STATUS_ERROR
             self.status_detail = STATUS_INFRA_REMOVE_ERROR
@@ -248,29 +252,27 @@ class HandleMicado(threading.Thread):
     def _is_valid_param(self, key_to_check):
         """Checks if the parameter is valid"""
         available = {
-            key: value
+            value
             for element in self.parameters
-            for key, value in element.items()
-            if key == key_to_check
+            for value in element.values()
+            if value == key_to_check
         }
-        return len(available) == 1
+        return len(available) > 0
 
 
-def _get_master_spec(adt):
-    """Retrieves the Master node configuration"""
+def _get_micado_spec(adt):
+    """Retrieves the MiCADO node configuration"""
     try:
-        node = adt["topology_template"]["node_templates"].pop(
-            "micado-master", {}
-        )
+        node = adt["topology_template"]["node_templates"].pop("micado", {})
         return node["properties"]
     except KeyError:
         pass
 
     try:
-        properties = load_yaml_file(DEFAULT_MASTER_YAML)["properties"]
+        properties = load_yaml_file(DEFAULT_MICADO_YAML)["properties"]
     except (yaml.YAMLError, KeyError):
         raise MicadoInfraException(
-            f"Could not get default Master spec from {DEFAULT_MASTER_YAML}"
+            f"Could not get default MiCADO spec from {DEFAULT_MICADO_YAML}"
         )
 
     return {key: val for key, val in properties.items() if val}

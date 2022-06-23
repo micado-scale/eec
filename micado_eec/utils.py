@@ -57,5 +57,5 @@ def get_adt_inputs(adt):
             "key": key,
             "description": details.get("description", "n/a").rstrip(),
         }
-        for key, details in adt.get("inputs", {}).items()
+        for key, details in adt.get("topology_template", {}).get("inputs", {}).items()
     ]

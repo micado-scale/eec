@@ -2,14 +2,9 @@ FROM python:3.8-alpine
 
 COPY requirements.txt /requirements.txt
 
-RUN apk add --update --no-cache --virtual .build-deps build-base libffi-dev openssl-dev \
-  && sed -e '$ d' /requirements.txt | pip3 install -r /dev/stdin \
+RUN apk add --update --no-cache --virtual .build-deps build-base libffi-dev openssl-dev git \
+  && pip install -r requirements.txt \
   && rm -f /requirements.txt \
-  && rm -rf /root/.cache \
-  && apk del .build-deps
-
-RUN apk add --update --no-cache --virtual .build-deps git \
-  && pip3 install git+git://github.com/micado-scale/micado-client@develop#egg=micado-client \
   && rm -rf /root/.cache \
   && apk del .build-deps
 
