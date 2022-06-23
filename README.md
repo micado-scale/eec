@@ -18,7 +18,7 @@ for more detail.
 The MiCADO EEC is shipped as a Docker container and makes heavy use of
 the [MiCADO Client Library](https://github.com/micado-scale/micado-client).
 It is deployed behind an NGINX reverse proxy and secured with SSL. Client
-certificate verification is also enabled.
+certificate verification can be optionally enabled.
 
 ### Host Specification & Requirements
 
@@ -72,9 +72,11 @@ and names that describe your desired MiCADO node on your desired cloud. This sho
 with an appropriate
 [firewall configuration](https://micado-scale.readthedocs.io/en/latest/deployment.html#step-4-launch-an-empty-cloud-vm-instance-for-micado-master).
 
-**Copy** `sample_nginx.conf` to `/etc/nginx/conf.d/eec.conf` and change all occurrences of
-`example.com` within to your own domain name. Place the .PEM file for client certificate
-verification at `/etc/nginx/cfg.pem`
+**Copy** `nginx.conf` to `/etc/nginx/conf.d/eec.conf` and change all occurrences of
+`example.com` within to your own domain name.
+
+* **Optional to enforce client verification** *Instead* copy `nginx-verify-client.conf`
+to `/etc/nginx/conf.d/eec.conf` Place the .PEM file for client certificate verification at `/etc/nginx/server.pem`
 
 ### Generating SSL certificates
 
