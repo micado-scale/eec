@@ -20,13 +20,25 @@ the [MiCADO Client Library](https://github.com/micado-scale/micado-client).
 It is deployed behind an NGINX reverse proxy and secured with SSL. Client
 certificate verification is also enabled.
 
-Docker-Compose is the recommeded deployment method:
+### Host Specification & Requirements
+
+**Minimum specs.**
+  - 2 vCPUs | 4GB RAM | 20GB Disk | Ubuntu 20.04
+  - FQDN that resolves to the instance public IP 
+
+**Install Docker and Docker-Compose.**
   - [Get Docker](https://docs.docker.com/get-docker/)
   - [Get Docker-Compose](https://docs.docker.com/compose/install/)
 
-### Preparing the host
+**Clone this repository into a directory of your choice**
+```bash
+git clone https://github.com/micado-scale/eec project_name_eec
+cd project_name_eec
+```
 
-**Run** `docker-compose up -d` for the first time and it will attempt to create the
+### Initial preparation of the host (only do this once)
+
+**Run** `docker-compose up -d` and it will attempt to create the
 following directories on the host. You can change these by modifying the
 `volumes` sections in `docker-compose.yml`.
   - `/etc/micado` (Configuration dir for the MiCADO Client Library)
@@ -46,10 +58,10 @@ docker stop nginx
 
 ### Preparing the configuration
 
-*If you changed the host configuration directories, make sure to point to them in the steps below*
+*If you did not use the default directories above, make sure to use the new names in the steps below*
 
 **Create** a [credentials file](https://micado-scale.readthedocs.io/en/develop/deployment.html#step-2-specify-cloud-credential-for-instantiating-micado-workers)
-at `/etc/micado/credentials-cloud-api.yml` and fill in your OpenStack credentials.
+at `/etc/micado/credentials-cloud-api.yml` and fill in your OpenStack or CloudBroker credentials.
 
 * **Optional** *Create* a [private Docker regsitry credential file](https://micado-scale.readthedocs.io/en/develop/deployment.html#step-3b-optional-specify-credentials-to-use-private-docker-registries)
 at `/etc/micado/credentials-docker-registry.yml` and fill in your private registry URL and credentials.
@@ -79,3 +91,7 @@ complete and the certificate is issued, run `docker-compose down`
 `nginx` and `certbot` services. This will enable automatic certificate renewal.
 
 **Run** `docker-compose up -d` one last time and the deployment is complete.
+
+### Integration
+
+Provide an EMGWAM administrator with your domain name and details.
