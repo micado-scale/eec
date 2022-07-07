@@ -1,7 +1,7 @@
 # MiCADO EEC
 
 The MiCADO Execution Engine Client (EEC) for the EMGWAM component
-in [CloudiFacturing](https://www.cloudifacturing.eu/) and
+in [CloudiFacturing](https://www.cloudifacturing.eu/), Co-Versatile(https://co-versatile.eu) and
 [DIGITbrain](https://digitbrain.eu/).
 
 Enables the deployment and execution of applications and services
@@ -17,7 +17,7 @@ for more detail.
 
 The MiCADO EEC is shipped as a Docker container and makes heavy use of
 the [MiCADO Client Library](https://github.com/micado-scale/micado-client).
-It is deployed behind an NGINX reverse proxy and secured with SSL. Client
+It is deployed behind traefik and secured with SSL. Client
 certificate verification can be optionally enabled.
 
 ### Host Specification & Requirements
@@ -36,25 +36,13 @@ git clone https://github.com/micado-scale/eec project_name_eec
 cd project_name_eec
 ```
 
-### Initial preparation of the host (only do this once)
+### Initial preparation of the host
 
-**Run** `docker-compose up -d` and it will attempt to create the
-following directories on the host. You can change these by modifying the
+Create the following default directories on the host. You can change these by modifying the
 `volumes` sections in `docker-compose.yml`.
   - `/etc/micado` (Configuration dir for the MiCADO Client Library)
   - `/etc/eec` (Configuration dir for the MiCADO EEC)
-  - `/etc/nginx` (Configuration dir the NGINX reverse proxy)
-  - `/etc/certbot` (Configuration dir for certbot/letsencrypt)
-
-**If** the NGINX directory is empty or was not created, you will need to
-populate it manually:
-```bash
-docker run -td --rm --name nginx nginx
-docker cp nginx:/etc/nginx /etc/
-docker stop nginx
-```
-
-**If the other directories were not created, please do so now.**
+  - `/etc/traefik/dynamic` (Configuration dir for traefik)
 
 ### Preparing the configuration
 
@@ -72,27 +60,21 @@ and names that describe your desired MiCADO node on your desired cloud. This sho
 with an appropriate
 [firewall configuration](https://micado-scale.readthedocs.io/en/latest/deployment.html#step-4-launch-an-empty-cloud-vm-instance-for-micado-master).
 
-**Copy** `nginx.conf` to `/etc/nginx/conf.d/eec.conf` and change all occurrences of
-`example.com` within to your own domain name.
+**Copy** `traefik.toml` to `/etc/traefik/traefik.toml` and replace `foo@example.com` with a valid email address.
 
-* **Optional to enforce client verification** *Instead* copy `nginx-verify-client.conf`
-to `/etc/nginx/conf.d/eec.conf` Place the .PEM file for client certificate verification at `/etc/nginx/server.pem`
+**Copy** `force-https.toml` to `/etc/traefik/dynamic/force-https.toml`
+
+**Create** an empty file in which Traefik can store retrieved HTTPS certificates. Set restrictive rw------- permissions for the created file.
+```bash
+touch /etc/traefik/acme.json
+chmod 600 /etc/traefik/acme.json
+```
 
 ### Generating SSL certificates
 
-**Edit** `init-letsencrypt.sh` (thanks to: https://medium.com/@pentacent) and replace `example.com`
-with your domain, and provide an email address. If you used a different directory on the host
-for your certbot configuration, change the `data_path` accordingly.
+**Edit** `docker-compose.yml` and replace `example.com` with your domain. 
 
-**Run** `docker-compose down` and then run the `init-letsencrypt.sh` script. This will create
-dummy certificates for NGINX and then request an actual certificate from letsencrypt using
-the [HTTP challenge](https://letsencrypt.org/docs/challenge-types/). Once the challenge is
-complete and the certificate is issued, run `docker-compose down`
-
-**Edit** `docker-compose.yml` and un-comment the `entrypoint`/`command` directives for the
-`nginx` and `certbot` services. This will enable automatic certificate renewal.
-
-**Run** `docker-compose up -d` one last time and the deployment is complete.
+**Run** `docker-compose up -d` and the deployment is complete.
 
 ### Integration
 
