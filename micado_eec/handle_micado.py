@@ -93,7 +93,10 @@ class HandleMicado(threading.Thread):
         )
 
     def get_status(self):
-        node_data = f"MiCADO node: {self.micado.micado_ip}"
+        try:
+            node_data = f"MiCADO node: {self.micado.micado_ip}"
+        except AttributeError:
+            node_data = ""
 
         # Can get node data here, if relevant
 
