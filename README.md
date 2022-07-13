@@ -1,7 +1,7 @@
 # MiCADO EEC
 
 The MiCADO Execution Engine Client (EEC) for the EMGWAM component
-in [CloudiFacturing](https://www.cloudifacturing.eu/), Co-Versatile(https://co-versatile.eu) and
+in [CloudiFacturing](https://www.cloudifacturing.eu/), [Co-Versatile](https://co-versatile.eu) and
 [DIGITbrain](https://digitbrain.eu/).
 
 Enables the deployment and execution of applications and services
@@ -49,12 +49,12 @@ Create the following default directories on the host. You can change these by mo
 *If you did not use the default directories above, make sure to use the new names in the steps below*
 
 **Create** a [credentials file](https://micado-scale.readthedocs.io/en/develop/deployment.html#step-2-specify-cloud-credential-for-instantiating-micado-workers)
-at `/etc/micado/credentials-cloud-api.yml` and fill in your OpenStack or CloudBroker credentials.
+at `/etc/micado/credentials-cloud-api.yml` and fill in your OpenStack or CloudBroker credentials. Sample credentials file are available in the [Ansible-micado](https://github.com/micado-scale/ansible-micado) repository.
 
 * **Optional** *Create* a [private Docker regsitry credential file](https://micado-scale.readthedocs.io/en/develop/deployment.html#step-3b-optional-specify-credentials-to-use-private-docker-registries)
 at `/etc/micado/credentials-docker-registry.yml` and fill in your private registry URL and credentials.
 
-**Copy** `openstack_micado_spec.yml` or `cloudbroker_micado_spec.yml` to `/etc/eec/micado_spec.yml` and populate it with the relevant cloud IDs
+**Copy** `openstack_micado_spec.yml` or `cloudbroker_micado_spec.yml` to `/etc/eec/micado_spec.yaml` and populate it with the relevant cloud IDs
 and names that describe your desired MiCADO node on your desired cloud. This should be an instance meeting the
 [recommended requirements](https://micado-scale.readthedocs.io/en/latest/deployment.html#prerequisites)
 with an appropriate
@@ -72,7 +72,7 @@ chmod 600 /etc/traefik/acme.json
 
 ### Generating SSL certificates
 
-**Edit** `docker-compose.yml` and replace `example.com` with your domain. 
+**Edit** `docker-compose.yml` and replace `example.com` with your domain. Also modify the ENV variables MICADO_CLOUD_LAUNCHER and MICADO_SPEC if necessary.
 
 **Run** `docker-compose up -d` and the deployment is complete.
 
