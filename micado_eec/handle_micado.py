@@ -30,7 +30,7 @@ STATUS_INFRA_REMOVING = "infrastructure for MiCADO is being removed"
 STATUS_INFRA_REMOVED = "infrastructure for MiCADO removed"
 STATUS_INFRA_REMOVE_ERROR = "failed to remove infrastructure for MiCADO"
 
-MICADO_CLOUD = "openstack"
+MICADO_CLOUD = os.environ.get("MICADO_CLOUD_LAUNCHER", "openstack")
 MICADO_INSTALLER = "ansible"
 MICADO_NODE = "micado"
 
