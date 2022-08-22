@@ -253,7 +253,7 @@ def get_submission(submission_id):
     """
     thread = threads.get(submission_id)
     if not thread:
-        raise NotFound("Cannot find submission {submission_id}")
+        raise NotFound(f"Cannot find submission {submission_id}")
     elif not thread.is_alive():
         threads.pop(submission_id, None)
 
@@ -301,7 +301,7 @@ def _remove_micado(submission_id):
     """
     thread = threads.get(submission_id)
     if not thread:
-        raise NotFound("Cannot find submission {submission_id}")
+        raise NotFound(f"Cannot find submission {submission_id}")
     thread.abort()
 
 
