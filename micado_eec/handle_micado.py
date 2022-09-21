@@ -4,6 +4,7 @@ import threading
 import time
 from datetime import datetime
 
+from werkzeug.datastructures import FileStorage
 import ruamel.yaml as yaml
 from micado import MicadoClient
 
@@ -30,7 +31,7 @@ STATUS_INFRA_REMOVING = "infrastructure for MiCADO is being removed"
 STATUS_INFRA_REMOVED = "infrastructure for MiCADO removed"
 STATUS_INFRA_REMOVE_ERROR = "failed to remove infrastructure for MiCADO"
 
-MICADO_CLOUD = os.environ.get("MICADO_CLOUD_LAUNCHER", "openstack")
+MICADO_CLOUD = "openstack"
 MICADO_INSTALLER = "ansible"
 MICADO_NODE = "micado"
 
@@ -96,7 +97,7 @@ class HandleMicado(threading.Thread):
         try:
             node_data = f"MiCADO node: {self.micado.micado_ip}"
         except AttributeError:
-            node_data = ""
+            node_data = "" 
 
         # Can get node data here, if relevant
 
@@ -141,10 +142,19 @@ class HandleMicado(threading.Thread):
         """Builds a MiCADO node and deploys an application"""
         try:
             # Load inputs and parameters
-            deployment_adt = base64_to_yaml(
-                self.artefact_data["downloadUrl_content"]
-            )
-            micado_node_data = _get_micado_spec(deployment_adt)
+            if self.artefact_data["downloadUrl"].endswith(".yaml"):
+                deployment_adt = base64_to_yaml(
+                    self.artefact_data["downloadUrl_content"]
+                )
+                micado_node_data = _get_micado_spec(deployment_adt)
+            else:
+                file_content = base64.b64decode(self.artefact_data["downloadUrl_content"])
+                file_name = f"{self.artefact_data['id']}.csar"
+                with open(file_name, "wb+") as f:
+                    f.write(file_content)
+                deployment_adt = open(file_name, "rb")
+                micado_node_data = _get_micado_spec({})
+
             parameters = self._load_params()
 
             # Create MiCADO
@@ -209,7 +219,10 @@ class HandleMicado(threading.Thread):
         self.status = STATUS_INIT
         self.status_detail = STATUS_APP_BUILD
 
-        self.micado.applications.create(adt=app_data, params=params)
+        if isinstance(app_data, dict):
+            self.micado.applications.create(adt=app_data, params=params)
+        else:
+            self.micado.applications.create(file=app_data, params=params)
 
         # TODO: Check app is running
 

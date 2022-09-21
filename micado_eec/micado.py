@@ -116,6 +116,8 @@ def _get_artefact_ports(artefact_data):
         tuple of lists of dicts: `free_inputs`, `free_outputs`, `parameters`
     """
     free_inputs, free_outputs, parameters = [], [], []
+    if artefact_data["downloadUrl"].endswith(".csar"):
+        return [], [], []
 
     try:
         artefact_content = base64_to_yaml(artefact_data["downloadUrl_content"])
