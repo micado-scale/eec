@@ -162,6 +162,10 @@ class HandleMicado(threading.Thread):
 
             # Submit ADT
             self._submit_app(deployment_adt, parameters)
+            try:
+                deployment_adt.close() # close the file
+            except AttributeError:
+                pass
 
             # Wait for abort
             while True:
