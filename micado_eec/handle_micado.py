@@ -95,7 +95,7 @@ class HandleMicado(threading.Thread):
 
     def get_status(self):
         try:
-            node_data = f"MiCADO node: {self.micado.micado_ip}"
+            node_data = self.micado.details
         except AttributeError:
             node_data = "" 
 
@@ -110,9 +110,10 @@ class HandleMicado(threading.Thread):
                 <h1>Overview</h1>
                 <p>This page summarizes the status of the MiCADO deployment</p>
                 <p>Status of the deployment: <b>{self.status_detail}</b></p>
-                <h1>Node IP address information</h1>
-                <p>Here you can find the IP address(es) allocated for the nodes
+                <h1>MiCADO login information</h1>
+                <p>Here you can find login info for the MiCADO dashboard:
                 {node_data}
+                </p>
             </body>
         </html>
         """
