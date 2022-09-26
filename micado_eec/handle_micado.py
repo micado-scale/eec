@@ -143,19 +143,7 @@ class HandleMicado(threading.Thread):
         """Builds a MiCADO node and deploys an application"""
         try:
             # Load inputs and parameters
-            if self.artefact_data["downloadUrl"].endswith(".yaml"):
-                deployment_adt = base64_to_yaml(
-                    self.artefact_data["downloadUrl_content"]
-                )
-                micado_node_data = _get_micado_spec(deployment_adt)
-            else:
-                file_content = base64.b64decode(self.artefact_data["downloadUrl_content"])
-                file_name = f"{self.artefact_data['id']}.csar"
-                with open(file_name, "wb+") as f:
-                    f.write(file_content)
-                deployment_adt = open(file_name, "rb")
-                micado_node_data = _get_micado_spec({})
-
+            deployment_adt, micado_node_data = self._get_micado_inputs()
             parameters = self._load_params()
 
             # Create MiCADO
@@ -173,17 +161,20 @@ class HandleMicado(threading.Thread):
                 if self._is_aborted():
                     break
                 time.sleep(30)
-        except MicadoBuildException as err:
-            self.status = STATUS_ERROR
-            self.status_detail = err.message
-        except MicadoInfraException as err:
-            self.status = STATUS_ERROR
-            self.status_detail = err.message
-            self._kill_micado()
-        except MicadoAppException as err:
-            self.status = STATUS_ERROR
-            self.status_details = err.message
-            self._delete_app()
+    def _get_micado_inputs(self):
+        """Get inputs for YAML or CSAR"""
+        if self.artefact_data["downloadUrl"].endswith(".yaml"):
+            deployment_adt = base64_to_yaml(self.artefact_data["downloadUrl_content"])
+            micado_node_data = _get_micado_spec(deployment_adt)
+        else:
+            file_content = base64.b64decode(self.artefact_data["downloadUrl_content"])
+            file_name = f"{self.artefact_data['id']}.csar"
+            with open(file_name, "wb+") as f:
+                f.write(file_content)
+            deployment_adt = open(file_name, "rb")
+            micado_node_data = _get_micado_spec({})
+
+        return deployment_adt, micado_node_data
 
     def _load_params(self):
         """Loads parameter data"""
