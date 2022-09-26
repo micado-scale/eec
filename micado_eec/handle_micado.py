@@ -1,26 +1,26 @@
 import os
+import io
 import base64
 import threading
 import time
 from datetime import datetime
+from typing import Optional
 
-from werkzeug.datastructures import FileStorage
 import ruamel.yaml as yaml
+from tinydb import TinyDB, Query
 from micado import MicadoClient
 
 from .utils import base64_to_yaml, load_yaml_file
 
-STATUS_INIT = 0 # initializing
-STATUS_RUNNING = 1 # running
-STATUS_RESULTS = 2 # results available
-STATUS_ERROR = 3 # error
-STATUS_ABORTED = 4 # stopping
-STATUS_STOPPED = 5 # stopped
+STATUS_INIT = 0  # initializing
+STATUS_RUNNING = 1  # running
+STATUS_RESULTS = 2  # results available
+STATUS_ERROR = 3  # error
+STATUS_ABORTED = 4  # stopping
+STATUS_STOPPED = 5  # stopped
 
 STATUS_INFRA_INIT = "infrastructure initializing"
-STATUS_INFRA_INIT_ERROR = (
-    "error: failed to initialize infrastructure for MiCADO"
-)
+STATUS_INFRA_INIT_ERROR = "error: failed to initialize infrastructure for MiCADO"
 STATUS_INFRA_BUILD = "infrastructure for MiCADO building"
 STATUS_INFRA_READY = "infrastructure for MiCADO ready"
 STATUS_APP_BUILD = "application is being deployed on the infrastructure"
@@ -35,15 +35,16 @@ MICADO_CLOUD = "openstack"
 MICADO_INSTALLER = "ansible"
 MICADO_NODE = "micado"
 
-DEFAULT_MICADO_YAML = os.environ.get(
-    "MICADO_SPEC", "/etc/eec/micado_spec.yaml"
-)
+DEFAULT_MICADO_YAML = os.environ.get("MICADO_SPEC", "/etc/eec/micado_spec.yaml")
 
 ARTEFACT_ADT_REF = "deployment_adt"
 INPUT_ADT_REF = "adt.yaml"
 
 APP_ID_PARAM = "app_id"
 APP_PARAMS = "params"
+
+db = TinyDB("/etc/eec/submissions.json")
+Apps = Query()
 
 
 class MicadoBuildException(Exception):
@@ -72,12 +73,12 @@ class HandleMicado(threading.Thread):
         self,
         threadID,
         name,
-        artefact_data,
-        inouts,
-        file_paths,
-        free_inputs,
-        free_outputs,
-        parameters,
+        artefact_data: Optional[dict] = None,
+        inouts: Optional[dict] = None,
+        file_paths: Optional[dict] = None,
+        free_inputs: Optional[dict] = None,
+        free_outputs: Optional[dict] = None,
+        parameters: Optional[dict] = None,
     ):
         super().__init__()
         self.threadID = threadID
@@ -91,13 +92,13 @@ class HandleMicado(threading.Thread):
         self.submit_time = datetime.now().timestamp()
         self.micado = MicadoClient(
             launcher=MICADO_CLOUD, installer=MICADO_INSTALLER
-        )
+            )
 
     def get_status(self):
         try:
             node_data = self.micado.details
         except AttributeError:
-            node_data = "" 
+            node_data = ""
 
         # Can get node data here, if relevant
 
@@ -119,9 +120,7 @@ class HandleMicado(threading.Thread):
         """
         return {
             "status": self.status,
-            "details": str(
-                base64.standard_b64encode(details.encode()), "utf-8"
-            ),
+            "details": str(base64.standard_b64encode(details.encode()), "utf-8"),
             "onlyStatus": True,
         }
 
@@ -129,6 +128,8 @@ class HandleMicado(threading.Thread):
         self._abort = True
         self.status = STATUS_ABORTED
         self.status_detail = STATUS_INFRA_REMOVING
+        self._kill_micado()
+        self.status_detail = STATUS_INFRA_REMOVED
 
     def runtime_seconds(self):
         return int(datetime.now().timestamp() - self.submit_time)
@@ -136,31 +137,41 @@ class HandleMicado(threading.Thread):
     def _is_aborted(self):
         if not self._abort:
             return False
-        self._kill_micado()
         return True
 
     def run(self):
         """Builds a MiCADO node and deploys an application"""
-        try:
+        app = db.search(Apps.submission_id == self.threadID)
+        if not app:
             # Load inputs and parameters
             deployment_adt, micado_node_data = self._get_micado_inputs()
             parameters = self._load_params()
 
-            # Create MiCADO
-            self._create_micado_node(micado_node_data)
-
-            # Submit ADT
-            self._submit_app(deployment_adt, parameters)
+            # Create MiCADO and submit app
             try:
-                deployment_adt.close() # close the file
-            except AttributeError:
-                pass
+                self._create_micado_node(micado_node_data)
+                self._submit_app(deployment_adt, parameters)
+            except Exception as e:
+                self.status = STATUS_ERROR
+                self._kill_micado(msg = str(e))
+            finally:
+                if isinstance(deployment_adt, io.TextIOWrapper):
+                    deployment_adt.close()
+        else:
+            app = app[0]
+            micado_id = app.get("micado_id", "")
+            self.submit_time = app.get("submit_time", datetime.now().timestamp())
+            try:
+                self.micado.micado.attach(micado_id)
+            except LookupError:
+                raise
 
-            # Wait for abort
-            while True:
-                if self._is_aborted():
-                    break
-                time.sleep(30)
+        # Wait for abort
+        while True:
+            if self._is_aborted():
+                break
+            time.sleep(30)
+
     def _get_micado_inputs(self):
         """Get inputs for YAML or CSAR"""
         if self.artefact_data["downloadUrl"].endswith(".yaml"):
@@ -205,6 +216,13 @@ class HandleMicado(threading.Thread):
         self.status_detail = STATUS_INFRA_BUILD
 
         self.micado.micado.create(**micado_node_data)
+        db.insert(
+            {
+                "submission_id": self.threadID,
+                "submit_time": self.submit_time,
+                "micado_id": self.micado.micado.micado_id,
+            }
+        )
 
         # TODO: Check micado is running
 
@@ -236,18 +254,16 @@ class HandleMicado(threading.Thread):
 
         self.status_detail = STATUS_APP_REMOVED
 
-    def _kill_micado(self):
+    def _kill_micado(self, msg = None):
         """Removes the MiCADO infrastructure and any applications"""
-        self.status = STATUS_ABORTED
-        self.status_detail = STATUS_INFRA_REMOVING
+        self.status_detail = msg or STATUS_INFRA_REMOVING
+        db.remove(Apps.submission_id == self.threadID)
         try:
             self.micado.micado.destroy()
         except Exception:
             self.status = STATUS_ERROR
-            self.status_detail = STATUS_INFRA_REMOVE_ERROR
+            self.status_detail = msg or STATUS_INFRA_REMOVE_ERROR
             raise
-        self.status = STATUS_ABORTED
-        self.status_detail = STATUS_INFRA_REMOVED
 
     def _is_valid_input(self, input_to_check):
         """Checks if the input is valid"""
