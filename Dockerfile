@@ -18,8 +18,8 @@ WORKDIR /etc/micado/
 WORKDIR /
 
 ENV MICADO_DIR=/etc/micado/
-ENV MICADO_VERS=0.9.2-rc1
-ENV MASTER_SPEC=/etc/eec/master_spec.yaml
+ENV MICADO_VERS=0.11.0
+ENV MICADO_SPEC=/etc/eec/micado_spec.yaml
 ENV FLASK_APP=/micado_eec/micado.py
 
 CMD python3 -m flask run --host 0.0.0.0

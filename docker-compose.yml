@@ -21,7 +21,7 @@ services:
       - 5000:5000
     environment:
       MICADO_CLI_DIR: /etc/micado
-      MICADO_VERS: v0.10.0
+      MICADO_VERS: v0.11.0
       MICADO_SPEC: /etc/eec/micado_spec.yaml
       MICADO_CLOUD_LAUNCHER: cloudbroker
     volumes:
