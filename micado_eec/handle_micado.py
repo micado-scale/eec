@@ -153,7 +153,8 @@ class HandleMicado(threading.Thread):
                 self._submit_app(deployment_adt, parameters)
             except Exception as e:
                 self.status = STATUS_ERROR
-                self._kill_micado(msg = str(e))
+                if hasattr(c.micado.micado, "micado_id"):
+                    self._kill_micado(msg = str(e))
             finally:
                 if isinstance(deployment_adt, io.TextIOWrapper):
                     deployment_adt.close()
