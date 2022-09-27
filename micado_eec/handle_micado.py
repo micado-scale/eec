@@ -96,7 +96,7 @@ class HandleMicado(threading.Thread):
 
     def get_status(self):
         try:
-            node_data = self.micado.details
+            node_data = self.micado.micado.details.replace("\n", "<br>   ")
         except AttributeError:
             node_data = ""
 
@@ -128,7 +128,8 @@ class HandleMicado(threading.Thread):
         self._abort = True
         self.status = STATUS_ABORTED
         self.status_detail = STATUS_INFRA_REMOVING
-        self._kill_micado()
+        if hasattr(self.micado.micado, "micado_id"):
+            self._kill_micado()
         self.status_detail = STATUS_INFRA_REMOVED
 
     def runtime_seconds(self):
@@ -152,6 +153,7 @@ class HandleMicado(threading.Thread):
                 self._create_micado_node(micado_node_data)
                 self._submit_app(deployment_adt, parameters)
             except Exception as e:
+                self.status_detail = str(e)
                 self.status = STATUS_ERROR
             finally:
                 if isinstance(deployment_adt, io.TextIOWrapper):
