@@ -7,7 +7,8 @@ from datetime import datetime
 from typing import Optional
 
 import ruamel.yaml as yaml
-from tinydb import TinyDB, Query
+from tinydb import TinyDB, Query, where
+from tinyrecord import transaction
 from micado import MicadoClient
 
 from .utils import base64_to_yaml, load_yaml_file
@@ -43,9 +44,8 @@ INPUT_ADT_REF = "adt.yaml"
 APP_ID_PARAM = "app_id"
 APP_PARAMS = "params"
 
-db = TinyDB("/etc/eec/submissions.json")
+db = TinyDB('/etc/eec/submissions.json').table('_default')
 Apps = Query()
-
 
 class MicadoBuildException(Exception):
     def __init__(self, message):
@@ -83,12 +83,12 @@ class HandleMicado(threading.Thread):
         super().__init__()
         self.threadID = threadID
         self.name = name
-        self.artefact_data = artefact_data
-        self.inouts = inouts
-        self.file_paths = file_paths
-        self.free_inputs = free_inputs
-        self.final_outputs = free_outputs
-        self.parameters = parameters
+        self.artefact_data = artefact_data or {}
+        self.inouts = inouts or {}
+        self.file_paths = file_paths or {}
+        self.free_inputs = free_inputs or {}
+        self.final_outputs = free_outputs or {}
+        self.parameters = parameters or {}
         self.submit_time = datetime.now().timestamp()
         self.micado = MicadoClient(
             launcher=MICADO_CLOUD, installer=MICADO_INSTALLER
@@ -168,7 +168,8 @@ class HandleMicado(threading.Thread):
             try:
                 self.micado.micado.attach(micado_id)
             except LookupError:
-                raise
+                with transaction(db) as tr:
+                    tr.remove(where("submission_id") == self.threadID)
 
         # Wait for abort
         while True:
@@ -220,13 +221,15 @@ class HandleMicado(threading.Thread):
         self.status_detail = STATUS_INFRA_BUILD
 
         self.micado.micado.create(**micado_node_data)
-        db.insert(
-            {
-                "submission_id": self.threadID,
-                "submit_time": self.submit_time,
-                "micado_id": self.micado.micado.micado_id,
-            }
-        )
+        
+        with transaction(db) as tr:
+            tr.insert(
+                {
+                    "submission_id": self.threadID,
+                    "submit_time": self.submit_time,
+                    "micado_id": self.micado.micado.micado_id,
+                }
+            )
 
         # TODO: Check micado is running
 
@@ -261,7 +264,8 @@ class HandleMicado(threading.Thread):
     def _kill_micado(self, msg = None):
         """Removes the MiCADO infrastructure and any applications"""
         self.status_detail = msg or STATUS_INFRA_REMOVING
-        db.remove(Apps.submission_id == self.threadID)
+        with transaction(db) as tr:
+            tr.remove(where("submission_id") == self.threadID)
         try:
             self.micado.micado.destroy()
         except Exception:

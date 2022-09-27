@@ -2,15 +2,14 @@ import json
 import uuid
 import tempfile
 
-from tinydb import TinyDB, Query
+from tinydb import TinyDB
 from flask import jsonify, Flask, request
 from werkzeug.exceptions import BadRequest, NotFound
 
 from .handle_micado import HandleMicado
 from .utils import base64_to_yaml, is_valid_adt, get_adt_inputs, file_to_json
 
-db = TinyDB("/etc/eec/submissions.json")
-Apps = Query()
+db = TinyDB("/etc/eec/submissions.json", access_mode="r")
 
 threads = {}
 
@@ -18,10 +17,7 @@ for entry in db:
     thread_id = entry["submission_id"]
     thread = HandleMicado(thread_id, f"process_{thread_id}")
     threads[thread_id] = thread
-    try:
-        thread.start()
-    except LookupError:
-        db.remove(Apps.submission_id == thread_id)
+    thread.start()
 
 app = Flask(__name__)
 app.debug = True
