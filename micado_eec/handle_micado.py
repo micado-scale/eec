@@ -128,7 +128,7 @@ class HandleMicado(threading.Thread):
         self._abort = True
         self.status = STATUS_ABORTED
         self.status_detail = STATUS_INFRA_REMOVING
-        if hasattr(self.micado.micado, "micado_id"):
+        if self.micado.micado.api:
             self._kill_micado()
         self.status_detail = STATUS_INFRA_REMOVED
 
@@ -304,4 +304,4 @@ def _get_micado_spec(adt):
             f"Could not get default MiCADO spec from {DEFAULT_MICADO_YAML}"
         )
 
-    return {key: val for key, val in properties.items() if val}
+    return {key: val for key, val in properties.items() if val is not None}
