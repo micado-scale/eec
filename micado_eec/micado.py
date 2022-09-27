@@ -18,7 +18,10 @@ for entry in db:
     thread_id = entry["submission_id"]
     thread = HandleMicado(thread_id, f"process_{thread_id}")
     threads[thread_id] = thread
-    thread.start()
+    try:
+        thread.start()
+    except LookupError:
+        db.remove(Apps.submission_id == thread_id)
 
 app = Flask(__name__)
 app.debug = True

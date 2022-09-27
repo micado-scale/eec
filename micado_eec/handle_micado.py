@@ -162,6 +162,8 @@ class HandleMicado(threading.Thread):
             app = app[0]
             micado_id = app.get("micado_id", "")
             self.submit_time = app.get("submit_time", datetime.now().timestamp())
+            self.status = STATUS_RUNNING
+            self.status_detail = STATUS_APP_READY
             try:
                 self.micado.micado.attach(micado_id)
             except LookupError:
