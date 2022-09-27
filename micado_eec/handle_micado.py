@@ -155,6 +155,7 @@ class HandleMicado(threading.Thread):
             except Exception as e:
                 self.status_detail = str(e)
                 self.status = STATUS_ERROR
+                raise
             finally:
                 if isinstance(deployment_adt, io.TextIOWrapper):
                     deployment_adt.close()
