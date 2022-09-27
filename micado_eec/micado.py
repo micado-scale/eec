@@ -300,8 +300,8 @@ def remove_micado(submission_id):
     Returns:
         Response: JSON Object
     """
-    _remove_micado(submission_id)
-    return jsonify({"status": "submission removal successfully initiated"})
+    msg = _remove_micado(submission_id)
+    return msg
 
 
 def _remove_micado(submission_id):
@@ -313,7 +313,10 @@ def _remove_micado(submission_id):
     thread = threads.get(submission_id)
     if not thread:
         raise NotFound(f"Cannot find submission {submission_id}")
+    elif thread._is_aborted():
+        return jsonify({"status": "Already processing submission removal..."}), 202
     thread.abort()
+    return jsonify({"status": "submission removal successfully initiated"})
 
 
 @app.route(
