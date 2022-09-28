@@ -1,27 +1,28 @@
 import json
 import uuid
 import tempfile
+from datetime import datetime
 
-from tinydb import TinyDB
+from redis import StrictRedis
 from flask import jsonify, Flask, request
 from werkzeug.exceptions import BadRequest, NotFound
 
 from .handle_micado import HandleMicado
 from .utils import base64_to_yaml, is_valid_adt, get_adt_inputs, file_to_json
 
-db = TinyDB("/etc/eec/submissions.json", access_mode="r")
+r = StrictRedis("redis", decode_responses=True)
+if not r.ping():
+    raise ConnectionError("Cannot connect to Redis")
 
-threads = {}
-
-for entry in db:
-    thread_id = entry["submission_id"]
+for thread_id in r.keys():
+    if not r.hget(thread_id, "micado_id"):
+        r.delete(thread_id)
+        continue
     thread = HandleMicado(thread_id, f"process_{thread_id}")
-    threads[thread_id] = thread
     thread.start()
 
 app = Flask(__name__)
 app.debug = True
-
 
 @app.errorhandler(BadRequest)
 def handle_generic_bad_request(error):
@@ -224,7 +225,6 @@ def _submit_micado(
         free_outputs,
         parameters,
     )
-    threads[thread_id] = thread
     thread.start()
     return thread_id
 
@@ -261,13 +261,17 @@ def get_submission(submission_id):
     Returns:
         Response: JSON object
     """
-    thread = threads.get(submission_id)
-    if not thread:
+    submission = r.hgetall(submission_id)
+    if not submission:
         raise NotFound(f"Cannot find submission {submission_id}")
-    elif not thread.is_alive():
-        threads.pop(submission_id, None)
 
-    return jsonify(thread.get_status())
+    status_info = {
+        "status": r.hget(submission_id, "status"),
+        "details": r.hget(submission_id, "details"),
+        "onlyStatus": r.hget(submission_id, "only_status"),
+    }
+
+    return jsonify(status_info)
 
 
 @app.route(
@@ -282,11 +286,11 @@ def get_micado_resource_usage(submission_id):
     Returns:
         Response: JSON object
     """
-    thread = threads.get(submission_id)
-    if not thread:
+    submission = r.hgetall(submission_id)
+    if not submission:
         raise NotFound(f"Cannot find submission {submission_id}")
-    runtime_seconds = thread.runtime_seconds()
-    return jsonify({"runtime_seconds": runtime_seconds})
+    runtime = runtime_seconds(r.hget(submission_id, "submit_time"))
+    return jsonify({"runtime_seconds": runtime})
 
 
 @app.route("/micado_eec/submissions/<submission_id>", methods=["DELETE"])
@@ -309,12 +313,13 @@ def _remove_micado(submission_id):
     Args:
         submission_id (str): ID of the submission to remove
     """
-    thread = threads.get(submission_id)
-    if not thread:
+    submission = r.hgetall(submission_id)
+    if not submission:
         raise NotFound(f"Cannot find submission {submission_id}")
-    elif thread._is_aborted():
+    elif r.hexists(submission_id, "abort"):
         return jsonify({"status": "Already processing submission removal..."}), 202
-    thread.abort()
+
+    r.hset(submission_id, "abort", True)
     return jsonify({"status": "submission removal successfully initiated"})
 
 
@@ -332,6 +337,10 @@ def get_result_file(submission_id, port_id):
         Response: JSON Object
     """
     # TODO: ?
+
+def runtime_seconds(start_time):
+    start_time = float(start_time)
+    return int(datetime.now().timestamp() - start_time)
 
 
 if __name__ == "__main__":
