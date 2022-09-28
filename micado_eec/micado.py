@@ -1,6 +1,7 @@
 import json
 import uuid
 import tempfile
+from datetime import datetime
 
 from tinydb import TinyDB
 from flask import jsonify, Flask, request
@@ -332,6 +333,9 @@ def get_result_file(submission_id, port_id):
         Response: JSON Object
     """
     # TODO: ?
+
+def runtime_seconds(start_time):
+    return int(datetime.now().timestamp() - start_time)
 
 
 if __name__ == "__main__":
