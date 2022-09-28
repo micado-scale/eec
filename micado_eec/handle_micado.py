@@ -7,8 +7,7 @@ from datetime import datetime
 from typing import Optional
 
 import ruamel.yaml as yaml
-from tinydb import TinyDB, Query, where
-from tinyrecord import transaction
+from redis import StrictRedis
 from micado import MicadoClient
 
 from .utils import base64_to_yaml, load_yaml_file
@@ -44,8 +43,9 @@ INPUT_ADT_REF = "adt.yaml"
 APP_ID_PARAM = "app_id"
 APP_PARAMS = "params"
 
-db = TinyDB('/etc/eec/submissions.json').table('_default')
-Apps = Query()
+r = StrictRedis("redis", decode_responses=True)
+if not r.ping():
+    raise ConnectionError("Cannot connect to Redis")
 
 class MicadoBuildException(Exception):
     def __init__(self, message):
@@ -83,18 +83,22 @@ class HandleMicado(threading.Thread):
         super().__init__()
         self.threadID = threadID
         self.name = name
+        
+        if not r.hgetall(threadID):
+            r.hset(threadID, "submit_time", datetime.now().timestamp())
+            self.set_status()
+
         self.artefact_data = artefact_data or {}
         self.inouts = inouts or {}
         self.file_paths = file_paths or {}
         self.free_inputs = free_inputs or {}
         self.final_outputs = free_outputs or {}
         self.parameters = parameters or {}
-        self.submit_time = datetime.now().timestamp()
         self.micado = MicadoClient(
             launcher=MICADO_CLOUD, installer=MICADO_INSTALLER
             )
 
-    def get_status(self):
+    def set_status(self):
         try:
             node_data = self.micado.micado.details.replace("\n", "<br>   ")
         except AttributeError:
@@ -118,32 +122,28 @@ class HandleMicado(threading.Thread):
             </body>
         </html>
         """
-        return {
-            "status": self.status,
-            "details": str(base64.standard_b64encode(details.encode()), "utf-8"),
-            "onlyStatus": True,
-        }
+        r.hset(self.threadID, "status", self.status)
+        r.hset(self.threadID, "details", str(base64.standard_b64encode(details.encode()), "utf-8"))
+        r.hset(self.threadID, "only_status", True)
 
     def abort(self):
-        self._abort = True
+        r.expire(self.threadID, 90)
         self.status = STATUS_ABORTED
         self.status_detail = STATUS_INFRA_REMOVING
+        self.set_status()
         if self.micado.micado.api:
             self._kill_micado()
         self.status_detail = STATUS_INFRA_REMOVED
-
-    def runtime_seconds(self):
-        return int(datetime.now().timestamp() - self.submit_time)
+        self.set_status()
 
     def _is_aborted(self):
-        if not self._abort:
-            return False
-        return True
+        if r.hexists(self.threadID, "abort"):
+            return True
+        return False
 
     def run(self):
         """Builds a MiCADO node and deploys an application"""
-        app = db.search(Apps.submission_id == self.threadID)
-        if not app:
+        if not r.hexists(self.threadID, "micado_id"):
             # Load inputs and parameters
             deployment_adt, micado_node_data = self._get_micado_inputs()
             parameters = self._load_params()
@@ -155,27 +155,29 @@ class HandleMicado(threading.Thread):
             except Exception as e:
                 self.status_detail = str(e)
                 self.status = STATUS_ERROR
+                self.set_status()
+                r.expire(self.threadID, 90)
                 raise
             finally:
                 if isinstance(deployment_adt, io.TextIOWrapper):
                     deployment_adt.close()
         else:
-            app = app[0]
-            micado_id = app.get("micado_id", "")
-            self.submit_time = app.get("submit_time", datetime.now().timestamp())
-            self.status = STATUS_RUNNING
-            self.status_detail = STATUS_APP_READY
+            micado_id = r.hget(self.threadID, "micado_id") or ""
             try:
                 self.micado.micado.attach(micado_id)
+                self.status = STATUS_RUNNING
+                self.status_detail = STATUS_APP_READY
+                self.set_status()
             except LookupError:
-                with transaction(db) as tr:
-                    tr.remove(where("submission_id") == self.threadID)
+                r.delete(self.threadID)
+                raise
 
         # Wait for abort
         while True:
             if self._is_aborted():
+                self.abort()
                 break
-            time.sleep(30)
+            time.sleep(15)
 
     def _get_micado_inputs(self):
         """Get inputs for YAML or CSAR"""
@@ -196,6 +198,7 @@ class HandleMicado(threading.Thread):
         """Loads parameter data"""
         self.status = STATUS_INIT
         self.status_detail = STATUS_INFRA_INIT
+        self.set_status()
 
         parameters = {
             element["key"]: element["value"]
@@ -219,26 +222,21 @@ class HandleMicado(threading.Thread):
         """Creates the MiCADO node"""
         self.status = STATUS_INIT
         self.status_detail = STATUS_INFRA_BUILD
+        self.set_status()
 
-        self.micado.micado.create(**micado_node_data)
-        
-        with transaction(db) as tr:
-            tr.insert(
-                {
-                    "submission_id": self.threadID,
-                    "submit_time": self.submit_time,
-                    "micado_id": self.micado.micado.micado_id,
-                }
-            )
+        self.micado.micado.create(**micado_node_data)        
+        r.hset(self.threadID, "micado_id", self.micado.micado.micado_id)
 
         # TODO: Check micado is running
 
         self.status_detail = STATUS_INFRA_READY
+        self.set_status()
 
     def _submit_app(self, app_data, params):
         """Submits an application to MiCADO"""
         self.status = STATUS_INIT
         self.status_detail = STATUS_APP_BUILD
+        self.set_status()
 
         if isinstance(app_data, dict):
             self.micado.applications.create(adt=app_data, params=params)
@@ -249,29 +247,33 @@ class HandleMicado(threading.Thread):
 
         self.status = STATUS_RUNNING
         self.status_detail = STATUS_APP_READY
+        self.set_status()
 
     def _delete_app(self):
         """Removes the running application from MiCADO"""
         self.status = STATUS_ABORTED
         self.status_detail = STATUS_APP_REMOVING
+        self.set_status()
         [
             self.micado.applications.delete(app.id)
             for app in self.micado.applications.list()
         ]
 
         self.status_detail = STATUS_APP_REMOVED
+        self.set_status()
 
     def _kill_micado(self, msg = None):
         """Removes the MiCADO infrastructure and any applications"""
         self.status_detail = msg or STATUS_INFRA_REMOVING
-        with transaction(db) as tr:
-            tr.remove(where("submission_id") == self.threadID)
+        self.set_status()
         try:
             self.micado.micado.destroy()
         except Exception:
             self.status = STATUS_ERROR
             self.status_detail = msg or STATUS_INFRA_REMOVE_ERROR
+            self.set_status()
             raise
+        
 
     def _is_valid_input(self, input_to_check):
         """Checks if the input is valid"""
