@@ -158,15 +158,15 @@ class HandleMicado(threading.Thread):
                 self.set_status()
                 raise
 
+            # Submit app
             deployment_adt = self._get_adt()
             parameters = self._load_params()
             try:
                 self._submit_app(deployment_adt, parameters)
             except Exception as e:
-                self.status_detail = str(e)
-                self.status = STATUS_ERROR
-                self.set_status()
                 r.expire(self.threadID, 90)
+                self.status = STATUS_ERROR
+                self._kill_micado(msg = str(e))
                 raise
             finally:
                 if isinstance(deployment_adt, io.TextIOWrapper):
