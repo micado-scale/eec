@@ -144,13 +144,23 @@ class HandleMicado(threading.Thread):
     def run(self):
         """Builds a MiCADO node and deploys an application"""
         if not r.hexists(self.threadID, "micado_id"):
-            # Load inputs and parameters
-            deployment_adt, micado_node_data = self._get_micado_inputs()
-            parameters = self._load_params()
+             # Check ADT data is valid
+            self._get_adt().close()
 
-            # Create MiCADO and submit app
+            # Create MiCADO
+            micado_node_data = _get_micado_spec()
             try:
                 self._create_micado_node(micado_node_data)
+            except Exception as e:
+                r.expire(self.threadID, 90)
+                self.status_detail = str(e)
+                self.status = STATUS_ERROR
+                self.set_status()
+                raise
+
+            deployment_adt = self._get_adt()
+            parameters = self._load_params()
+            try:
                 self._submit_app(deployment_adt, parameters)
             except Exception as e:
                 self.status_detail = str(e)
@@ -179,20 +189,18 @@ class HandleMicado(threading.Thread):
                 break
             time.sleep(15)
 
-    def _get_micado_inputs(self):
+    def _get_adt(self):
         """Get inputs for YAML or CSAR"""
         if self.artefact_data["downloadUrl"].endswith(".yaml"):
             deployment_adt = base64_to_yaml(self.artefact_data["downloadUrl_content"])
-            micado_node_data = _get_micado_spec(deployment_adt)
         else:
             file_content = base64.b64decode(self.artefact_data["downloadUrl_content"])
             file_name = f"{self.artefact_data['id']}.csar"
             with open(file_name, "wb+") as f:
                 f.write(file_content)
             deployment_adt = open(file_name, "rb")
-            micado_node_data = _get_micado_spec({})
 
-        return deployment_adt, micado_node_data
+        return deployment_adt
 
     def _load_params(self):
         """Loads parameter data"""
@@ -298,14 +306,8 @@ class HandleMicado(threading.Thread):
         return len(available) > 0
 
 
-def _get_micado_spec(adt):
+def _get_micado_spec():
     """Retrieves the MiCADO node configuration"""
-    try:
-        node = adt["topology_template"]["node_templates"].pop("micado", {})
-        return node["properties"]
-    except KeyError:
-        pass
-
     try:
         properties = load_yaml_file(DEFAULT_MICADO_YAML)["properties"]
     except (yaml.YAMLError, KeyError):
