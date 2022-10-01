@@ -3,19 +3,24 @@ import uuid
 import tempfile
 from datetime import datetime
 
-from redis import StrictRedis
+import redis
 from flask import jsonify, Flask, request
 from werkzeug.exceptions import BadRequest, NotFound
 
 from .handle_micado import HandleMicado
 from .utils import base64_to_yaml, is_valid_adt, get_adt_inputs, file_to_json
 
-r = StrictRedis("redis", decode_responses=True)
+r = redis.StrictRedis("redis", decode_responses=True)
 if not r.ping():
     raise ConnectionError("Cannot connect to Redis")
 
 for thread_id in r.keys():
-    if not r.hget(thread_id, "micado_id"):
+    try:
+        micado_id = r.hget(thread_id, "micado_id")
+    except redis.exceptions.ResponseError:
+        raise TypeError("Database corrupt - contains wrong data types.")
+    
+    if not micado_id:
         r.delete(thread_id)
         continue
     thread = HandleMicado(thread_id, f"process_{thread_id}")
