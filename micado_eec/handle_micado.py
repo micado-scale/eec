@@ -173,7 +173,7 @@ class HandleMicado(threading.Thread):
         self.set_status()
 
         try:
-            self._create_micado_node(micado_node_data)
+            self.micado.micado.create(**micado_node_data)
         except Exception as e:
             r.expire(self.threadID, 90)
             self.status_detail = str(e)
