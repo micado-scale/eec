@@ -227,7 +227,7 @@ class HandleMicado(threading.Thread):
 
     def _get_adt(self):
         """Get inputs for YAML or CSAR"""
-        if self.artefact_data["downloadUrl"].endswith(".yaml"):
+        if self.artefact_data["downloadUrl"].endswith((".yaml", ".yml")):
             deployment_adt = base64_to_yaml(self.artefact_data["downloadUrl_content"])
         else:
             file_content = base64.b64decode(self.artefact_data["downloadUrl_content"])
