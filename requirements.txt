@@ -1,4 +1,4 @@
-micado-client==0.11.4
+micado-client==0.11.5
 gunicorn==20.1.0
 redispy==3.0.0
 tinydb==4.7.0
