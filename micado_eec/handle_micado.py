@@ -154,6 +154,7 @@ class HandleMicado(threading.Thread):
             # Submit app
             deployment_adt = self._get_adt()
             parameters = self._load_params()
+            parameters.update({"DIGITBRAIN_DMAINSTANCEID": self.threadID})
             self._submit_app(deployment_adt, parameters)
 
         else:
@@ -247,7 +248,8 @@ class HandleMicado(threading.Thread):
         parameters = {
             element["key"]: element["value"]
             for element in self.inouts.get("parameters", [])
-            if self._is_valid_param(element["key"])
+            if self._is_valid_param(element["key"]) and
+            if not element["key"].startswith("DIGITBRAIN_")
         }
 
         return parameters
