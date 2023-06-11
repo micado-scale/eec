@@ -1,5 +1,7 @@
 import base64
+import io
 import json
+import zipfile
 
 import ruamel.yaml as yaml
 
@@ -59,3 +61,30 @@ def get_adt_inputs(adt):
         }
         for key, details in adt.get("topology_template", {}).get("inputs", {}).items()
     ]
+
+def get_csar_inputs(b64_csar):
+
+    file_content = base64.b64decode(b64_csar)
+
+    file_like_object = io.BytesIO(file_content)
+    zip_file = zipfile.ZipFile(file_like_object)
+
+    params = []
+
+    for file in zip_file.namelist():
+
+        if not file.endswith('.yaml') or file.startswith('__'):
+            continue
+
+        yaml_file = zip_file.open(file)
+        adt = yaml.safe_load(yaml_file)
+        
+        params.extend([
+            {
+                "key": key,
+                "description": details.get("description", "n/a").rstrip(),
+            }
+            for key, details in adt.get("topology_template", {}).get("inputs", {}).items()
+        ])
+
+    return params

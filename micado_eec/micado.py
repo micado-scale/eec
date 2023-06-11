@@ -8,7 +8,7 @@ from flask import jsonify, Flask, request
 from werkzeug.exceptions import BadRequest, NotFound
 
 from .handle_micado import HandleMicado
-from .utils import base64_to_yaml, is_valid_adt, get_adt_inputs, file_to_json
+from .utils import base64_to_yaml, is_valid_adt, get_adt_inputs, get_csar_inputs, file_to_json
 
 r = redis.StrictRedis("redis", decode_responses=True)
 if not r.ping():
@@ -131,7 +131,8 @@ def _get_artefact_ports(artefact_data):
     """
     free_inputs, free_outputs, parameters = [], [], []
     if artefact_data["downloadUrl"].endswith(".csar"):
-        return [], [], []
+        params = get_csar_inputs(artefact_data["downloadUrl_content"])
+        return [], [], params
 
     try:
         artefact_content = base64_to_yaml(artefact_data["downloadUrl_content"])
