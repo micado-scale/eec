@@ -18,7 +18,7 @@ WORKDIR /etc/micado/
 WORKDIR /
 
 ENV MICADO_DIR=/etc/micado/
-ENV MICADO_VERS=0.11.4
+ENV MICADO_VERS=0.12.1
 ENV MICADO_SPEC=/etc/eec/micado_spec.yaml
 
 ENTRYPOINT ["gunicorn", "micado_eec.micado:app", "--bind", "0.0.0.0:5000", "--timeout", "1000", "--workers", "5"]

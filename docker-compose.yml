@@ -10,7 +10,7 @@ services:
     - /etc/traefik:/etc/traefik
     - /var/run/docker.sock:/var/run/docker.sock:ro
   api:
-    image: micado/eec:0.11
+    image: micado/eec:0.12
     labels:
       - 'traefik.enable=true'
       - 'traefik.http.routers.my-app.rule=Host(`example.com`)'
@@ -21,7 +21,7 @@ services:
       - 5000:5000
     environment:
       MICADO_CLI_DIR: /etc/micado
-      MICADO_VERS: v0.11
+      MICADO_VERS: v0.12.1
       MICADO_SPEC: /etc/eec/micado_spec.yaml
       MICADO_CLOUD_LAUNCHER: cloudbroker
     volumes:
