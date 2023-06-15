@@ -79,12 +79,6 @@ def get_csar_inputs(b64_csar):
         yaml_file = zip_file.open(file)
         adt = yaml.safe_load(yaml_file)
         
-        params.extend([
-            {
-                "key": key,
-                "description": details.get("description", "n/a").rstrip(),
-            }
-            for key, details in adt.get("topology_template", {}).get("inputs", {}).items()
-        ])
+        params.extend(get_adt_inputs(adt))
 
     return params
