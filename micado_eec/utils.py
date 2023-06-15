@@ -58,6 +58,9 @@ def get_adt_inputs(adt):
         {
             "key": key,
             "description": details.get("description", "n/a").rstrip(),
+            "required": details.get("required", True),
+            "type": details.get("type", "string").rstrip(),
+            "default": details.get("default", ""),
         }
         for key, details in adt.get("topology_template", {}).get("inputs", {}).items()
         if not key.startswith("EMG_SUBMISSION_ID")
