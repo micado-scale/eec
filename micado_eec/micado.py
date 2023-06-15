@@ -219,7 +219,11 @@ def _submit_micado(
     Returns:
         string: ID of this submission (also of the thread)
     """
-    thread_id = str(uuid.uuid4())
+    try:
+        thread_id = artefact_data["emgwamId"]
+    except KeyError:
+        raise KeyError("Could not get emgwamId from artefact_data")
+    
     file_paths = _write_files(files)
     thread = HandleMicado(
         thread_id,

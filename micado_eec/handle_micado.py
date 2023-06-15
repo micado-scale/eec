@@ -249,6 +249,8 @@ class HandleMicado(threading.Thread):
             for element in self.inouts.get("parameters", [])
             if self._is_valid_param(element["key"])
         }
+        
+        parameters.update({"EMG_SUBMISSION_ID": self.threadID})
 
         return parameters
 
