@@ -63,7 +63,7 @@ def get_adt_inputs(adt):
             "default": details.get("default", ""),
         }
         for key, details in adt.get("topology_template", {}).get("inputs", {}).items()
-        if not key.startswith("EMG_SUBMISSION_ID")
+        if not key.startswith("EMG_")
     ]
 
 def get_csar_inputs(b64_csar):
