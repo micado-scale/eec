@@ -252,7 +252,7 @@ class HandleMicado(threading.Thread):
         
         parameters.update({"EMG_SUBMISSION_ID": self.threadID})
         parameters.update({"EMG_SALT": self.artefact_data.get("salt", "")})
-        parameters.update({"EMG_IV": self.artefact_data.get("iv", "")})
+        parameters.update({"EMG_IV": str(self.artefact_data.get("iv", ""))})
         parameters.update({"EMG_NONCE": self.artefact_data.get("nonce", "")})
         
         return parameters
