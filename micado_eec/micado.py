@@ -1,6 +1,7 @@
 import json
 import uuid
 import tempfile
+import time
 from datetime import datetime
 
 import redis
@@ -10,24 +11,25 @@ from werkzeug.exceptions import BadRequest, NotFound
 from .handle_micado import HandleMicado
 from .utils import base64_to_yaml, is_valid_adt, get_adt_inputs, get_csar_inputs, file_to_json
 
+app = Flask(__name__)
+app.debug = True
+
 r = redis.StrictRedis("redis", decode_responses=True)
 if not r.ping():
     raise ConnectionError("Cannot connect to Redis")
 
 for thread_id in r.keys():
     try:
-        micado_id = r.hget(thread_id, "micado_id")
+        updated = r.hget(thread_id, "last_app_refresh")
     except redis.exceptions.ResponseError:
         raise TypeError("Database corrupt - contains wrong data types.")
-    
-    if not micado_id:
-        r.delete(thread_id)
-        continue
-    thread = HandleMicado(thread_id, f"process_{thread_id}")
-    thread.start()
 
-app = Flask(__name__)
-app.debug = True
+    age_seconds = time.time() - float(updated)
+    if age_seconds > 30:
+        r.hset(thread_id, "last_app_refresh", time.time())
+        thread = HandleMicado(thread_id, f"process_{thread_id}")
+        thread.start()
+
 
 @app.errorhandler(BadRequest)
 def handle_generic_bad_request(error):

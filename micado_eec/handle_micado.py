@@ -3,7 +3,6 @@ import io
 import base64
 import threading
 import time
-from datetime import datetime
 from typing import Optional
 
 import ruamel.yaml as yaml
@@ -86,7 +85,7 @@ class HandleMicado(threading.Thread):
         self.name = name
 
         if not r.hgetall(threadID):
-            r.hset(threadID, "submit_time", datetime.now().timestamp())
+            r.hset(threadID, "submit_time", time.time())
             self.set_status()
 
         self.artefact_data = artefact_data or {}
@@ -161,6 +160,7 @@ class HandleMicado(threading.Thread):
 
         # Wait for abort
         while True:
+            r.hset(self.threadID, "last_app_refresh", time.time())
             if self._is_aborted():
                 self.abort()
                 break
@@ -177,6 +177,9 @@ class HandleMicado(threading.Thread):
         except Exception as e:
             r.expire(self.threadID, 90)
             self.status_detail = str(e)
+            self.status = STATUS_ERROR
+            self.status_detail = err.message
+        except MicadoInfraException as err:
             self.status = STATUS_ERROR
             self.set_status()
             raise
