@@ -178,9 +178,6 @@ class HandleMicado(threading.Thread):
             r.expire(self.threadID, 90)
             self.status_detail = str(e)
             self.status = STATUS_ERROR
-            self.status_detail = err.message
-        except MicadoInfraException as err:
-            self.status = STATUS_ERROR
             self.set_status()
             raise
         r.hset(self.threadID, "micado_id", self.micado.micado.micado_id)
