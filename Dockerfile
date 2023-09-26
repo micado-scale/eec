@@ -21,4 +21,4 @@ ENV MICADO_DIR=/etc/micado/
 ENV MICADO_VERS=0.12.1
 ENV MICADO_SPEC=/etc/eec/micado_spec.yaml
 
-ENTRYPOINT ["gunicorn", "micado_eec.micado:app", "-c", "gunicorn_conf.py"]
+ENTRYPOINT ["gunicorn", "micado_eec.micado:app", "-c", "micado_eec/gunicorn_conf.py"]
