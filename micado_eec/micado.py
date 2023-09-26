@@ -8,15 +8,11 @@ import redis
 from flask import jsonify, Flask, request
 from werkzeug.exceptions import BadRequest, NotFound
 
-from .handle_micado import HandleMicado
+from .handle_micado import HandleMicado, r
 from .utils import base64_to_yaml, is_valid_adt, get_adt_inputs, get_csar_inputs, file_to_json
 
 app = Flask(__name__)
 app.debug = True
-
-r = redis.StrictRedis("redis", decode_responses=True)
-if not r.ping():
-    raise ConnectionError("Cannot connect to Redis")
 
 for thread_id in r.keys():
     try:

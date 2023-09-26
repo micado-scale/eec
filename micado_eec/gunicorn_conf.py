@@ -1,5 +1,5 @@
 import redis
-from micado_eec.handle_micado import HandleMicado
+from micado_eec.handle_micado import HandleMicado, r
 
 bind = '0.0.0.0:5000'
 
@@ -8,10 +8,6 @@ timeout = 30
 
 def on_starting(server):
     server.log.info("Cleaning-up uninitialised apps...")
-
-    r = redis.StrictRedis("redis", decode_responses=True)
-    if not r.ping():
-        raise ConnectionError("Cannot connect to Redis")
 
     for thread_id in r.keys():
         try:
