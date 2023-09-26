@@ -3,11 +3,10 @@ import io
 import base64
 import threading
 import time
-from datetime import datetime
 from typing import Optional
 
+import redis
 import ruamel.yaml as yaml
-from redis import StrictRedis
 from micado import MicadoClient
 
 from .utils import base64_to_yaml, load_yaml_file
@@ -43,7 +42,10 @@ INPUT_ADT_REF = "adt.yaml"
 APP_ID_PARAM = "app_id"
 APP_PARAMS = "params"
 
-r = StrictRedis("redis", decode_responses=True)
+try:
+    r = redis.StrictRedis("redis", decode_responses=True)
+except redis.exceptions.ConnectionError as e:
+    raise ConnectionError(f"Cannot connect to Redis: {e}")
 if not r.ping():
     raise ConnectionError("Cannot connect to Redis")
 
@@ -86,7 +88,7 @@ class HandleMicado(threading.Thread):
         self.name = name
 
         if not r.hgetall(threadID):
-            r.hset(threadID, "submit_time", datetime.now().timestamp())
+            r.hset(threadID, "submit_time", time.time())
             self.set_status()
 
         self.artefact_data = artefact_data or {}
@@ -161,6 +163,7 @@ class HandleMicado(threading.Thread):
 
         # Wait for abort
         while True:
+            r.hset(self.threadID, "last_app_refresh", time.time())
             if self._is_aborted():
                 self.abort()
                 break
