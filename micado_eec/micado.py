@@ -20,6 +20,9 @@ for thread_id in r.keys():
     except redis.exceptions.ResponseError:
         raise TypeError("Database corrupt - contains wrong data types.")
 
+    if not updated:
+        continue
+    
     age_seconds = time.time() - float(updated)
     if age_seconds > 30:
         r.hset(thread_id, "last_app_refresh", time.time())
