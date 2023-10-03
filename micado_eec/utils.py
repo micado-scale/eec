@@ -2,6 +2,7 @@ import base64
 import io
 import json
 import zipfile
+from base64 import b64decode, b16decode
 
 import ruamel.yaml as yaml
 
@@ -22,7 +23,7 @@ def base64_to_yaml(base64_yaml):
         dict: dict representation of YAML
     """
     try:
-        decoded_string = base64.b64decode(base64_yaml).decode("utf-8")
+        decoded_string = b64decode(base64_yaml).decode("utf-8")
         return yaml.safe_load(decoded_string)
     except yaml.YAMLError:
         raise ValueError("Could not parse YAML")
@@ -68,7 +69,7 @@ def get_adt_inputs(adt):
 
 def get_csar_inputs(b64_csar):
 
-    file_content = base64.b64decode(b64_csar)
+    file_content = b64decode(b64_csar)
 
     file_like_object = io.BytesIO(file_content)
     zip_file = zipfile.ZipFile(file_like_object)
