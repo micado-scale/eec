@@ -9,7 +9,7 @@ import redis
 import ruamel.yaml as yaml
 from micado import MicadoClient
 
-from .utils import base64_to_yaml, load_yaml_file
+from .utils import base64_to_yaml, load_yaml_file, decrypt_ciphertext
 
 STATUS_INIT = 0  # initializing
 STATUS_RUNNING = 1  # running
@@ -257,6 +257,13 @@ class HandleMicado(threading.Thread):
         parameters.update({"EMG_SALT": self.artefact_data.get("salt", "")})
         parameters.update({"EMG_IV": str(self.artefact_data.get("iv", ""))})
         parameters.update({"EMG_NONCE": self.artefact_data.get("nonce", "")})
+
+        for name, value in parameters.items():
+            for definition in self.parameters:
+                if name != definition["key"]:
+                    continue
+                if definition["type"] == "secret":
+                    parameters[name] = decrypt_ciphertext(value)
         
         return parameters
 
