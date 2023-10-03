@@ -6,3 +6,4 @@ tinydb==4.7.0
 tinyrecord==0.2.0
 ruamel.yaml==0.17.21
 Flask==2.1.0
+Werkzeug==2.2.2
