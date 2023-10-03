@@ -1,11 +1,14 @@
-import base64
 import io
 import json
+import os
 import zipfile
 from base64 import b64decode, b16decode
 
 import ruamel.yaml as yaml
+from Crypto.Cipher import PKCS1_v1_5 as Cipher_PKCS1_v1_5
+from Crypto.PublicKey import RSA
 
+EEC_PRIV_KEY = os.environ.get("EEC_PRIV_KEY", "/etc/eec/eec.pem")
 
 def load_yaml_file(path):
     """Loads YAML data from file"""
@@ -87,3 +90,19 @@ def get_csar_inputs(b64_csar):
         params.extend(get_adt_inputs(adt))
 
     return params
+
+def decrypt_ciphertext(ciphertext):
+
+    decode_data = b64decode(ciphertext)
+
+    if len(decode_data) == 127:
+        hex_fixed = '00' + decode_data.hex()
+        decode_data = b16decode(hex_fixed.upper())
+    
+    with open(EEC_PRIV_KEY) as privkey:
+        other_private_key = RSA.importKey(b64decode(privkey.read()))
+    
+    cipher = Cipher_PKCS1_v1_5.new(other_private_key)
+    decrypt_text = cipher.decrypt(decode_data, None).decode()
+
+    return decrypt_text
