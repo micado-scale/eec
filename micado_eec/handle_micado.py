@@ -151,6 +151,7 @@ class HandleMicado(threading.Thread):
         if not r.hexists(self.threadID, "micado_id"):
             # Create MiCADO
             micado_node_data = _get_micado_spec()
+            micado_node_data["name"] = f"MiCADO-{self.threadID}"
             self._create_micado_node(micado_node_data)
 
             # Submit app
