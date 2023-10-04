@@ -1,4 +1,4 @@
-micado-client==0.12.3
+micado-client==0.12.4
 pycryptodome==3.18.0
 gunicorn==20.1.0
 redispy==3.0.0
